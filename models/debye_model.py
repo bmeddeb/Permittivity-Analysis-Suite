@@ -17,14 +17,16 @@ class DebyeModel(BaseModel):
 
     def analyze(self, df):
         freq_ghz, dk, df_loss = get_numeric_data(df)
-        freq = freq_ghz * 1e9
+        freq = freq_ghz*1e9
         eps_exp = dk - 1j*dk*df_loss
-
         eps_inf = np.min(np.real(eps_exp))
         delta_eps = np.max(np.real(eps_exp))-eps_inf
         tau = 1/(2*np.pi*np.mean(freq))
-
         res = least_squares(self.objective, [delta_eps,tau,eps_inf], args=(freq,eps_exp))
         eps_fit = self.model(res.x,freq)
-
-        return {"freq_ghz": freq_ghz, "eps_fit": eps_fit, "params_fit": res.x}
+        return {
+            "freq_ghz": freq_ghz,
+            "eps_fit": eps_fit,
+            "params_fit": res.x,
+            "dk_exp": dk
+        }
