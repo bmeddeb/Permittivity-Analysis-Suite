@@ -20,7 +20,7 @@ It supports:
 
 ## 📦 Installation
 ```bash
-git clone <repo-url>
+git clone https://github.com/bmeddeb/Permittivity-Analysis-Suite.git
 cd permittivity_app
 pip install -r requirements.txt
 ```
