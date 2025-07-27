@@ -83,8 +83,28 @@ layout = html.Div([
                     html.Label("Number of Terms for Hybrid Model:", className="form-label fw-bold"),
                     dcc.Slider(
                         id="n-terms-slider",
-                        min=1, max=10, step=1, value=5,
-                        marks={i: str(i) for i in range(1, 11)},
+                        min=1, max=5, step=1, value=2,
+                        marks={i: str(i) for i in range(1, 6)},
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    )
+                ], className="mb-3"),
+
+                html.Div([
+                    html.Label("Number of Poles for Multipole Debye:", className="form-label fw-bold"),
+                    dcc.Slider(
+                        id="multipole-terms-slider",
+                        min=1, max=5, step=1, value=3,
+                        marks={i: str(i) for i in range(1, 6)},
+                        tooltip={"placement": "bottom", "always_visible": True}
+                    )
+                ], className="mb-3"),
+
+                html.Div([
+                    html.Label("Number of Oscillators for Lorentz Model:", className="form-label fw-bold"),
+                    dcc.Slider(
+                        id="lorentz-terms-slider",
+                        min=1, max=4, step=1, value=2,
+                        marks={i: str(i) for i in range(1, 5)},
                         tooltip={"placement": "bottom", "always_visible": True}
                     )
                 ])
