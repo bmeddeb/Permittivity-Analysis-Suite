@@ -60,6 +60,39 @@ layout = html.Div([
                     html.I(className="fas fa-cogs me-2"),
                     "Analysis Configuration"
                 ], className="card-title text-primary"),
+                # Auto-Selection Mode Toggle
+                html.Div([
+                    html.Label("Analysis Mode:", className="form-label fw-bold"),
+                    dcc.RadioItems(
+                        id="analysis-mode",
+                        options=[
+                            {"label": " Auto-Select Best Model", "value": "auto"},
+                            {"label": " Auto + Compare All Models", "value": "auto_compare"},
+                            {"label": " Manual Model Selection", "value": "manual"}
+                        ],
+                        value="auto",
+                        className="mb-3",
+                        style={"display": "flex", "flexDirection": "column", "gap": "8px"}
+                    )
+                ], className="mb-3"),
+
+                # Selection Method (for auto modes)
+                html.Div([
+                    html.Label("Selection Criteria:", className="form-label fw-bold"),
+                    dcc.Dropdown(
+                        id="selection-method",
+                        options=[
+                            {"label": "🎯 Balanced (AIC + RMSE)", "value": "balanced"},
+                            {"label": "📊 Statistical Rigor (AIC-focused)", "value": "aic_focused"},
+                            {"label": "🎯 Best Accuracy (RMSE-focused)", "value": "rmse_focused"}
+                        ],
+                        value="balanced",
+                        clearable=False,
+                        className="mb-3"
+                    )
+                ], id="selection-method-div", className="mb-3"),
+
+                # Manual Model Selection (hidden by default)
                 html.Div([
                     html.Label("Select Analysis Methods:", className="form-label fw-bold"),
                     dcc.Checklist(
@@ -77,8 +110,7 @@ layout = html.Div([
                         ],
                         value=["debye"]
                     )
-
-                ]),
+                ], id="manual-selection-div", style={"display": "none"}, className="mb-3"),
                 html.Div([
                     html.Label("Number of Terms for Hybrid Model:", className="form-label fw-bold"),
                     dcc.Slider(
@@ -107,7 +139,17 @@ layout = html.Div([
                         marks={i: str(i) for i in range(1, 5)},
                         tooltip={"placement": "bottom", "always_visible": True}
                     )
-                ])
+                ], className="mb-3"),
+
+                # Info note about parameter behavior
+                html.Div([
+                    html.Small([
+                        html.I(className="fas fa-info-circle me-1"),
+                        html.Strong("Note: "),
+                        "Auto modes optimize N automatically (testing N=1-5 for each variable model). ",
+                        "Sliders only apply in Manual mode."
+                    ], className="text-info")
+                ], className="mb-2")
             ], className="card-body")
         ], className="card shadow-sm mb-4 col-md-6")
     ], className="row"),

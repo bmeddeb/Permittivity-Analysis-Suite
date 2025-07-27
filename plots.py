@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 
-def create_permittivity_plot(results, df):
+def create_permittivity_plot(results, df, best_model=None):
     freq = df.iloc[:, 0].values
     dk_exp = df.iloc[:, 1].values
     df_exp = df.iloc[:, 2].values
@@ -84,14 +84,19 @@ def create_permittivity_plot(results, df):
             if "eps_imag_kk_full" in result:
                 df_fit = result["eps_imag_kk_full"]
 
+        # Determine if this is the best model for highlighting
+        is_best_model = (best_model is not None and key == best_model)
+        line_width = 4 if is_best_model else 2
+        name_prefix = "🏆 " if is_best_model else ""
+
         # Plot Dk (always plot this for fitting models)
         if dk_fit is not None and len(x_vals) == len(dk_fit):
             fig.add_trace(go.Scatter(
                 x=x_vals,
                 y=dk_fit,
                 mode="lines",
-                name=f"{key.replace('_', ' ').title()} Dk",
-                line=dict(color=color_map[key], width=2),
+                name=f"{name_prefix}{key.replace('_', ' ').title()} Dk",
+                line=dict(color=color_map[key], width=line_width),
                 showlegend=True
             ), row=1, col=1)
 
@@ -103,8 +108,8 @@ def create_permittivity_plot(results, df):
                 x=x_vals,
                 y=df_fit,
                 mode="lines",
-                name=f"{key.replace('_', ' ').title()} Df",
-                line=dict(color=color_map[key], dash="dot", width=2),
+                name=f"{name_prefix}{key.replace('_', ' ').title()} Df",
+                line=dict(color=color_map[key], dash="dot", width=line_width),
                 showlegend=True
             ), row=2, col=1)
 
