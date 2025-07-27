@@ -36,11 +36,7 @@ class DebyeModel(BaseModel):
             weight_df * df_residual
         ])
 
-        # Strong penalty for negative imaginary parts
-        negative_penalty = np.sum(np.minimum(np.imag(eps_fit), 0) ** 2) * 1000.0
-        if negative_penalty > 0:
-            residual = np.append(residual, np.sqrt(negative_penalty))
-
+        # FIXED: Removed penalty append to maintain consistent array size
         return residual
 
     def analyze(self, df):
