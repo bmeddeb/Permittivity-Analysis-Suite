@@ -1,5 +1,14 @@
-import pandas as pd
 import base64, io
+import pandas as pd
+
+
+def get_numeric_data(df):
+    freq_ghz = pd.to_numeric(df.iloc[:,0], errors="coerce")
+    dk = pd.to_numeric(df.iloc[:,1], errors="coerce")
+    df_loss = pd.to_numeric(df.iloc[:,2], errors="coerce")
+    mask = ~(freq_ghz.isna() | dk.isna() | df_loss.isna())
+    return freq_ghz[mask].values, dk[mask].values, df_loss[mask].values
+
 
 def parse_contents(contents, filename):
     content_type, content_string = contents.split(',')

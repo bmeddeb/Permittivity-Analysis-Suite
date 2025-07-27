@@ -1,6 +1,7 @@
+# utils.py
 import numpy as np
 from scipy.optimize import least_squares
-from utils import get_numeric_data
+from utils.helpers import get_numeric_data
 from utils.fitting_utils import init_hybrid_params, get_hybrid_bounds
 from .base_model import BaseModel
 

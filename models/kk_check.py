@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from utils import get_numeric_data
+from utils.helpers import get_numeric_data
 
 def kk_real_from_imag(freq, eps_imag, eps_inf):
     N = len(freq)

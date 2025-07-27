@@ -1,5 +1,5 @@
 from dash import Input, Output, State, html
-from utils import parse_contents
+from utils.helpers import parse_contents
 from analysis import run_analysis
 from plots import create_permittivity_plot
 
