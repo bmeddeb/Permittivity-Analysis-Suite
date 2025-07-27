@@ -1,4 +1,3 @@
-# callbacks.py
 from dash import Input, Output, State, html
 from utils.helpers import parse_contents
 from analysis import run_analysis
@@ -26,19 +25,32 @@ def register_callbacks(app):
         results = run_analysis(df, selected_models, n_terms)
         fig = create_permittivity_plot(results, df)
 
+        # Determine best fit (lowest RMSE)
+        best_model = None
+        best_rmse = float("inf")
+        for key, r in results.items():
+            if "rmse" in r and r["rmse"] < best_rmse:
+                best_rmse = r["rmse"]
+                best_model = key
+
         summary_items = []
         for key, r in results.items():
-            if "eps_fit" in r:
-                rmse_real = ((r["eps_fit"].real - r.get("dk_exp", df.iloc[:,1].values))**2).mean()**0.5
-                pass_fail = rmse_real < 0.1 and (r.get("success", True))
-            elif key == "kk":
-                pass_fail = r.get("mean_err_full", 1) < 0.05
-            else:
-                continue
+            label = key.replace("_", " ").title() + ":"
+            if "rmse" in r:
+                label += f" RMSE={r['rmse']:.4f}"
 
-            badge = html.Span("PASS" if pass_fail else "FAIL",
-                              className=f"badge {'bg-success' if pass_fail else 'bg-danger'} ms-2")
-            summary_items.append(html.Div([html.Strong(key.replace("_"," ").title() + ":"), badge]))
+            if key == best_model:
+                badge_class = "badge bg-success ms-2"
+                badge_text = "BEST FIT"
+            elif "rmse" in r:
+                badge_class = "badge bg-secondary ms-2"
+                badge_text = "PASS"
+            else:
+                badge_class = "badge bg-warning ms-2"
+                badge_text = "N/A"
+
+            badge = html.Span(badge_text, className=badge_class)
+            summary_items.append(html.Div([html.Strong(label), badge]))
 
         summary = html.Div(summary_items, className="p-2")
         return summary, fig, html.Div("Download section")
