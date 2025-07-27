@@ -1,5 +1,5 @@
 [project]
-name = "Permittivity Analysis Suite"
+name = "Permittivity-Analysis-Suite"
 version = "0.1.0"
 description = "A Dash web application for analyzing dielectric permittivity data, performing Debye and Hybrid Debye-Lorentz model fitting, and verifying causality using Kramers-Kronig relations."
 authors = [
