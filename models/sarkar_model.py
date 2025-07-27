@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import least_squares
-from utils import get_numeric_data
+from utils.helpers import get_numeric_data
 from .base_model import BaseModel
 
 class SarkarModel(BaseModel):

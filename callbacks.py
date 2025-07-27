@@ -1,3 +1,4 @@
+# callbacks.py
 from dash import Input, Output, State, html
 from utils.helpers import parse_contents
 from analysis import run_analysis
