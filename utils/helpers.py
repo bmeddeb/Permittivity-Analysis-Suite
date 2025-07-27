@@ -19,15 +19,27 @@ def parse_contents(contents, filename):
     except UnicodeDecodeError:
         text = decoded.decode('latin1')
 
+    df = None
+
     # Try multiple delimiters
     for sep in [',', ';', '\t']:
         try:
-            df = pd.read_csv(io.StringIO(text), sep=sep)
-            if df.shape[1] >= 3:  # Must have at least 3 columns
-                return df
+            tmp_df = pd.read_csv(io.StringIO(text), sep=sep)
+            if tmp_df.shape[1] >= 3:
+                df = tmp_df
+                break
         except Exception:
             continue
 
-    raise ValueError("Unable to parse CSV – unsupported format or inconsistent columns.")
+    if df is None:
+        raise ValueError("Unable to parse CSV – unsupported format or inconsistent columns.")
 
+    # ✅ Clean Data
+    df = df.dropna(how="all")  # Remove empty rows
+    df = df.dropna()  # Remove rows with any NaN
+    df = df.apply(pd.to_numeric, errors="coerce")  # Convert to numeric
+    df = df.dropna()  # Drop rows with NaNs after conversion
+    df = df[df.iloc[:, 0] > 0]  # Remove zero or negative frequencies
+
+    return df
 

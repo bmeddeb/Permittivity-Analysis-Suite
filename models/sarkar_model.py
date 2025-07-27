@@ -5,23 +5,39 @@ from .base_model import BaseModel
 
 class SarkarModel(BaseModel):
     def model(self, params, freq):
-        delta_eps, tau, sigma, eps_inf = params
-        eps0 = 8.854e-12
-        return eps_inf + delta_eps/(1+1j*2*np.pi*freq*tau) + sigma/(1j*2*np.pi*freq*eps0)
+        eps_s, eps_inf, f_p = params
+        return eps_inf + (eps_s - eps_inf) / (1 + 1j * (freq / f_p))
 
-    def objective(self, params, freq, eps_exp):
+    def objective(self, params, freq, dk_exp, df_exp):
         eps_fit = self.model(params, freq)
-        return np.concatenate([np.real(eps_fit)-np.real(eps_exp),
-                               np.imag(eps_fit)-np.imag(eps_exp)])
+        return np.concatenate([
+            np.real(eps_fit) - dk_exp,
+            np.imag(eps_fit) - df_exp
+        ])
 
     def analyze(self, df):
-        freq_ghz, dk, df_loss = get_numeric_data(df)
-        freq = freq_ghz*1e9
-        eps_exp = dk - 1j*dk*df_loss
-        delta_eps0 = np.max(dk)-np.min(dk)
-        tau0 = 1/(2*np.pi*np.mean(freq))
-        sigma0 = 1e-3
-        p0 = [delta_eps0, tau0, sigma0, np.min(dk)]
-        res = least_squares(self.objective, p0, args=(freq, eps_exp))
-        eps_fit = self.model(res.x, freq)
-        return {"freq": freq_ghz, "eps_fit": eps_fit, "params_fit": res.x, "dk_exp": dk}
+        freq_ghz, dk_exp, df_exp = get_numeric_data(df)
+        # Initial guess
+        p0 = [5.0, 3.0, 1.0]  # [eps_s, eps_inf, f_p] in GHz
+
+        res = least_squares(
+            self.objective,
+            p0,
+            args=(freq_ghz, dk_exp, df_exp),
+            bounds=([1.0, 1.0, 1e-3], [20.0, 20.0, 1e3]),
+            method="trf"
+        )
+
+        eps_fit = self.model(res.x, freq_ghz)
+        dk_fit = np.real(eps_fit)
+        df_fit = np.imag(eps_fit)
+
+        return {
+            "freq": freq_ghz,
+            "eps_fit": eps_fit,
+            "dk_fit": dk_fit,
+            "df_fit": df_fit,
+            "params_fit": res.x,
+            "success": res.success,
+            "cost": res.cost
+        }
