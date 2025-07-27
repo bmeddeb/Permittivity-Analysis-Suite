@@ -8,14 +8,21 @@ from .base_model import BaseModel
 class HybridModel(BaseModel):
     def hybrid_eval(self, params, freq, N):
         delta_eps = params[:N]
-        f_k = params[N:2*N]
-        sigma_k = params[2*N:3*N]
+        f_k = params[N:2 * N]
+        sigma_k = params[2 * N:3 * N]
         eps_inf = params[-1]
-        F = freq.reshape(-1, 1)
-        FK = f_k.reshape(1, -1)
-        debye_terms = delta_eps/(1+1j*(F/FK))
-        lorentz_terms = 1j*F.flatten()*(sigma_k/(F.flatten()**2 + FK.flatten()**2))
-        return eps_inf + np.sum(debye_terms, axis=1) + np.sum(lorentz_terms, axis=1)
+
+        F = freq.reshape(-1, 1)  # shape (M,1)
+        FK = f_k.reshape(1, -1)  # shape (1,N)
+
+        # Debye terms (M,N)
+        debye_terms = delta_eps / (1 + 1j * (F / FK))
+
+        # Lorentz terms (M,N) - fix broadcasting
+        lorentz_terms = 1j * F * (sigma_k / (F ** 2 + FK ** 2))
+
+        eps_r = eps_inf + np.sum(debye_terms, axis=1) + np.sum(lorentz_terms, axis=1)
+        return eps_r
 
     def objective(self, params, freq, eps_exp, N):
         eps_fit = self.hybrid_eval(params, freq, N)

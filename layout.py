@@ -66,11 +66,18 @@ layout = html.Div([
                         id="model-selection",
                         options=[
                             {"label": "Simple Debye Model", "value": "debye"},
+                            {"label": "Multi-Pole Debye Model", "value": "multipole_debye"},
+                            {"label": "Cole-Cole Model", "value": "cole_cole"},
+                            {"label": "Cole-Davidson Model", "value": "cole_davidson"},
+                            {"label": "Havriliak-Negami Model", "value": "havriliak_negami"},
+                            {"label": "Lorentz Oscillator Model", "value": "lorentz"},
+                            {"label": "D. Sarkar Model", "value": "sarkar"},
                             {"label": "Hybrid Debye-Lorentz Model", "value": "hybrid"},
                             {"label": "KK Causality Check", "value": "kk"}
                         ],
                         value=["debye"]
                     )
+
                 ]),
                 html.Div([
                     html.Label("Number of Terms for Hybrid Model:", className="form-label fw-bold"),

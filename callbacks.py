@@ -27,29 +27,18 @@ def register_callbacks(app):
         fig = create_permittivity_plot(results, df)
 
         summary_items = []
+        for key, r in results.items():
+            if "eps_fit" in r:
+                rmse_real = ((r["eps_fit"].real - r.get("dk_exp", df.iloc[:,1].values))**2).mean()**0.5
+                pass_fail = rmse_real < 0.1 and (r.get("success", True))
+            elif key == "kk":
+                pass_fail = r.get("mean_err_full", 1) < 0.05
+            else:
+                continue
 
-        if "debye" in results:
-            r = results["debye"]
-            rmse_real = ((r["eps_fit"].real - r["dk_exp"]) ** 2).mean() ** 0.5
-            pass_fail = rmse_real < 0.1
             badge = html.Span("PASS" if pass_fail else "FAIL",
                               className=f"badge {'bg-success' if pass_fail else 'bg-danger'} ms-2")
-            summary_items.append(html.Div([html.Strong("Debye Model:"), badge]))
-
-        if "hybrid" in results:
-            r = results["hybrid"]
-            rmse_real = ((r["dk_fit"] - r["dk_exp"]) ** 2).mean() ** 0.5
-            pass_fail = rmse_real < 0.1 and r["success"]
-            badge = html.Span("PASS" if pass_fail else "FAIL",
-                              className=f"badge {'bg-success' if pass_fail else 'bg-danger'} ms-2")
-            summary_items.append(html.Div([html.Strong("Hybrid Model:"), badge]))
-
-        if "kk" in results:
-            r = results["kk"]
-            pass_fail = r["mean_err_full"] < 0.05
-            badge = html.Span("PASS" if pass_fail else "FAIL",
-                              className=f"badge {'bg-success' if pass_fail else 'bg-danger'} ms-2")
-            summary_items.append(html.Div([html.Strong("KK Causality Check:"), badge]))
+            summary_items.append(html.Div([html.Strong(key.replace("_"," ").title() + ":"), badge]))
 
         summary = html.Div(summary_items, className="p-2")
         return summary, fig, html.Div("Download section")
