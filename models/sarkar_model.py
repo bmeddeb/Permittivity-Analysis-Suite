@@ -88,8 +88,10 @@ class SarkarModel(BaseModel):
         freq_ghz, dk_exp, df_exp = get_numeric_data(df)
 
         print(f"Sarkar Model (lmfit)")
-        print(f"Experimental Dk range: {np.min(dk_exp):.3f} to {np.max(dk_exp):.3f}")
-        print(f"Experimental Df range: {np.min(df_exp):.6f} to {np.max(df_exp):.6f}")
+        print(
+            f"Experimental Dk range: {np.min(dk_exp):.3f} to {np.max(dk_exp):.3f}")
+        print(
+            f"Experimental Df range: {np.min(df_exp):.6f} to {np.max(df_exp):.6f}")
 
         # --- Integration of Sarkar Explorer Logic ---
 
@@ -113,19 +115,25 @@ class SarkarModel(BaseModel):
             for i in range(n_starts):
                 p_rand = initial_params.copy()
                 # Create random starting values within bounds
-                if 'eps_s' in p_rand: p_rand['eps_s'].value = np.random.uniform(p_rand['eps_s'].min,
-                                                                                p_rand['eps_s'].max)
-                if 'delta_eps' in p_rand: p_rand['delta_eps'].value = np.random.uniform(p_rand['delta_eps'].min,
-                                                                                        p_rand['delta_eps'].max)
-                if 'f_p' in p_rand: p_rand['f_p'].value = np.random.uniform(p_rand['f_p'].min, p_rand['f_p'].max)
+                if 'eps_s' in p_rand:
+                    p_rand['eps_s'].value = np.random.uniform(p_rand['eps_s'].min,
+                                                              p_rand['eps_s'].max)
+                if 'delta_eps' in p_rand:
+                    p_rand['delta_eps'].value = np.random.uniform(p_rand['delta_eps'].min,
+                                                                  p_rand['delta_eps'].max)
+                if 'f_p' in p_rand:
+                    p_rand['f_p'].value = np.random.uniform(
+                        p_rand['f_p'].min, p_rand['f_p'].max)
 
-                res = lmfit.minimize(self.residual_function, p_rand, args=(freq_ghz, dk_exp, df_exp), method='leastsq')
+                res = lmfit.minimize(self.residual_function, p_rand, args=(
+                    freq_ghz, dk_exp, df_exp), method='leastsq')
 
                 if res.chisqr < best_multistart_chisqr:
                     best_multistart_chisqr = res.chisqr
                     best_multistart_result = res
 
-            print(f"  Best multi-start Chi-squared: {best_multistart_chisqr:.4f}")
+            print(
+                f"  Best multi-start Chi-squared: {best_multistart_chisqr:.4f}")
             if best_multistart_chisqr < best_result.chisqr:
                 best_result = best_multistart_result
                 best_method = 'multi-start'
@@ -137,7 +145,8 @@ class SarkarModel(BaseModel):
                 params_de = params_template.copy()
                 for name, val in zip(varnames, x):
                     params_de[name].value = val
-                residuals = self.residual_function(params_de, freq_ghz, dk_exp, df_exp)
+                residuals = self.residual_function(
+                    params_de, freq_ghz, dk_exp, df_exp)
                 return np.sum(residuals ** 2)
 
             bounds = []
@@ -162,7 +171,8 @@ class SarkarModel(BaseModel):
                 best_result = global_result
                 best_method = 'global'
 
-        print(f"\n🏆 Best fit found using '{best_method}' method (Chi-squared: {best_result.chisqr:.4f})\n")
+        print(
+            f"\n🏆 Best fit found using '{best_method}' method (Chi-squared: {best_result.chisqr:.4f})\n")
 
         # --- End of Explorer Integration ---
 
@@ -173,27 +183,37 @@ class SarkarModel(BaseModel):
         eps_fit = self.model_function(result.params, freq_ghz)
 
         # Handle negative imaginary parts
-        eps_fit_corrected = self.handle_negative_imaginary(eps_fit, "Sarkar model")
+        eps_fit_corrected = self.handle_negative_imaginary(
+            eps_fit, "Sarkar model")
 
         # Physical interpretation
         eps_s_fit = result.params['eps_s'].value
         eps_inf_fit = result.params['eps_inf'].value
         f_p_fit = result.params['f_p'].value
 
-        print(f"Fitted - eps_s: {result.params['eps_s'].value:.3f} ± {result.params['eps_s'].stderr or 0:.3f}")
-        print(f"Fitted - eps_inf: {result.params['eps_inf'].value:.3f} ± {result.params['eps_inf'].stderr or 0:.3f}")
-        print(f"Fitted - f_p (GHz): {result.params['f_p'].value:.3f} ± {result.params['f_p'].stderr or 0:.3f}")
+        print(
+            f"Fitted - eps_s: {result.params['eps_s'].value:.3f} ± {result.params['eps_s'].stderr or 0:.3f}")
+        print(
+            f"Fitted - eps_inf: {result.params['eps_inf'].value:.3f} ± {result.params['eps_inf'].stderr or 0:.3f}")
+        print(
+            f"Fitted - f_p (GHz): {result.params['f_p'].value:.3f} ± {result.params['f_p'].stderr or 0:.3f}")
         print(f"Optimization success: {result.success}")
         print(f"AIC: {result.aic:.2f}")
         print(f"BIC: {result.bic:.2f}")
 
         dielectric_strength = eps_s_fit - eps_inf_fit
-        print(f"Dielectric strength (eps_s - eps_inf): {dielectric_strength:.3f}")
+        print(
+            f"Dielectric strength (eps_s - eps_inf): {dielectric_strength:.3f}")
 
         if eps_s_fit <= eps_inf_fit:
-            print(f"Warning: eps_s ({eps_s_fit:.3f}) <= eps_inf ({eps_inf_fit:.3f}) - unphysical!")
+            print(
+                f"Warning: eps_s ({eps_s_fit:.3f}) <= eps_inf ({eps_inf_fit:.3f}) - unphysical!")
         else:
-            print(f"Physical check: eps_s ({eps_s_fit:.3f}) > eps_inf ({eps_inf_fit:.3f}) ✓")
+            print(
+                f"Physical check: eps_s ({eps_s_fit:.3f}) > eps_inf ({eps_inf_fit:.3f}) ✓")
+
+        # Extract fitted parameters in expected format
+        fitted_params = self.extract_fitted_params(result, "sarkar")
 
         return {
             "freq_ghz": freq_ghz,
@@ -201,6 +221,7 @@ class SarkarModel(BaseModel):
             "dk_fit": eps_fit_corrected.real,
             "df_fit": eps_fit_corrected.imag,
             "params_fit": [eps_s_fit, eps_inf_fit, f_p_fit],
+            "fitted_params": fitted_params,  # Add expected fitted_params dictionary
             "dk_exp": dk_exp,
             "success": result.success,
             "cost": result.chisqr,
