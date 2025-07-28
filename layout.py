@@ -195,8 +195,16 @@ layout = html.Div([
 
             html.Div(id="results-summary", className="mb-3"),
 
-            dcc.Graph(id="permittivity-plots", style={"height": "700px"})
-        ], className="card-body")
+            dcc.Loading(
+                id="loading-analysis",
+                type="dot",
+                color="#007bff",
+                children=[
+                    dcc.Graph(id="permittivity-plots", style={"height": "700px"})
+                ],
+                style={"height": "700px"}
+            )
+        ], className="card-body", style={"position": "relative"})
     ], className="card shadow-sm mb-4", id="results-card"),
 
 ], className="container", style={"maxWidth": "1200px"})
