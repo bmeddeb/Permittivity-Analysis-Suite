@@ -34,7 +34,7 @@ A comprehensive Dash web application for analyzing dielectric permittivity data 
 #### Option 1: Automated Setup (Recommended)
 ```bash
 git clone https://github.com/bmeddeb/Permittivity-Analysis-Suite.git
-cd permittivity_app
+cd Permittivity-Analysis-Suite
 chmod +x run.sh
 ./run.sh
 ```
