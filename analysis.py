@@ -164,7 +164,7 @@ def compute_rmse(result, df):
 
 def run_analysis(df, selected_models, model_params, analysis_mode="manual"):
     """
-    Updated to handle model_params dictionary and auto-selection mode
+    Enhanced analysis with integrated preprocessing support
 
     Args:
         df: DataFrame with experimental data
@@ -174,10 +174,59 @@ def run_analysis(df, selected_models, model_params, analysis_mode="manual"):
             - 'multipole_terms': int
             - 'lorentz_terms': int
             - 'selection_method': str ('balanced', 'aic_focused', 'rmse_focused')
+            - 'preprocessing_mode': str ('auto', 'manual', 'none')
+            - 'preprocessing_method': str (for manual mode)
+            - 'preprocessing_selection_method': str ('hybrid', 'rule_based', 'quality_based')
         analysis_mode: 'manual' or 'auto' or 'auto_compare'
     """
+    # Import enhanced preprocessing
+    from utils.enhanced_preprocessing import EnhancedDielectricPreprocessor
+    
     # Extract parameters with defaults
     selection_method = model_params.get('selection_method', 'balanced')
+    preprocessing_mode = model_params.get('preprocessing_mode', 'auto')
+    preprocessing_method = model_params.get('preprocessing_method', 'smoothing_spline')
+    preprocessing_selection_method = model_params.get('preprocessing_selection_method', 'hybrid')
+    
+    # Initialize preprocessing results
+    preprocessing_info = None
+    original_df = df.copy()
+    
+    # Apply preprocessing based on mode
+    if preprocessing_mode != 'none':
+        print(f"=== PREPROCESSING ({preprocessing_mode.upper()} MODE) ===")
+        preprocessor = EnhancedDielectricPreprocessor()
+        
+        if preprocessing_mode == 'auto':
+            # Auto preprocessing with selected method
+            df, preprocessing_info = preprocessor.preprocess(
+                df, apply_smoothing=True, selection_method=preprocessing_selection_method
+            )
+            print(f"Auto preprocessing: {preprocessing_info.get('dk_algorithm', 'None')} applied")
+        
+        elif preprocessing_mode == 'manual':
+            # Manual preprocessing with specific algorithm
+            print(f"Manual preprocessing: {preprocessing_method}")
+            # Extract manual parameters for UI overrides
+            manual_params = model_params.get('preprocessing_params', {})
+            df, preprocessing_info = preprocessor.preprocess_manual(
+                df, preprocessing_method, manual_params
+            )
+        
+        # Add original data reference for comparison
+        if preprocessing_info:
+            preprocessing_info['original_data'] = original_df
+            print(f"Preprocessing applied: {preprocessing_info.get('smoothing_applied', False)}")
+            print(f"Noise score: {preprocessing_info.get('noise_metrics', {}).get('overall_noise_score', 'N/A'):.3f}")
+    else:
+        print("=== NO PREPROCESSING ===")
+        preprocessing_info = {
+            'preprocessing_mode': 'none',
+            'smoothing_applied': False,
+            'original_data': original_df,
+            'noise_metrics': {},
+            'recommendations': ['Preprocessing disabled by user']
+        }
 
     # Use different parameter sets for auto vs manual mode
     if analysis_mode in ["auto", "auto_compare"]:
@@ -334,13 +383,22 @@ def run_analysis(df, selected_models, model_params, analysis_mode="manual"):
     # Handle auto-selection modes
     if analysis_mode == "auto":
         # Auto mode: return only the best model
-        return auto_select_best_model(results, selection_method)
+        auto_result = auto_select_best_model(results, selection_method)
+        if isinstance(auto_result, dict) and 'error' not in auto_result:
+            auto_result['preprocessing_info'] = preprocessing_info
+        return auto_result
     elif analysis_mode == "auto_compare":
         # Auto-compare mode: return all results with enhanced comparison
-        return auto_compare_models(results, selection_method)
+        compare_result = auto_compare_models(results, selection_method)
+        if isinstance(compare_result, dict) and 'error' not in compare_result:
+            compare_result['preprocessing_info'] = preprocessing_info
+        return compare_result
     else:
-        # Manual mode: return results as-is
-        return results
+        # Manual mode: return results as-is with preprocessing info
+        return {
+            'model_results': results,
+            'preprocessing_info': preprocessing_info
+        }
 
 
 def auto_select_best_model(results, selection_method="balanced"):

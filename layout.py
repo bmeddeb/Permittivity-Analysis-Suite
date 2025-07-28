@@ -63,7 +63,194 @@ layout = html.Div([
                 html.Small(
                     "Expected format: [Frequency_GHz, Dk, Df]",
                     className="form-text text-muted mt-2"
-                )
+                ),
+                
+                # Preprocessing Controls Section
+                html.Hr(className="my-3"),
+                html.Div([
+                    html.H6([
+                        html.I(className="fas fa-magic me-2"),
+                        "Data Preprocessing"
+                    ], className="text-primary mb-2"),
+                    
+                    html.P("Automatically analyze and smooth noisy data for better model fitting.", 
+                           className="text-muted small mb-2"),
+                    
+                    # Preprocessing Mode Selection
+                    dcc.RadioItems(
+                        id="preprocessing-mode",
+                        options=[
+                            {"label": " Auto (Recommended)", "value": "auto"},
+                            {"label": " Manual Selection", "value": "manual"},
+                            {"label": " No Smoothing", "value": "none"}
+                        ],
+                        value="auto",
+                        className="mb-2",
+                        style={"fontSize": "0.9rem"}
+                    ),
+                    
+                    # Auto Mode Settings (visible by default)
+                    html.Div([
+                        html.Label("Selection Method:", className="form-label small fw-bold"),
+                        dcc.Dropdown(
+                            id="preprocessing-selection-method",
+                            options=[
+                                {"label": "🎯 Hybrid (Rule + Quality)", "value": "hybrid"},
+                                {"label": "⚡ Rule-Based (Fast)", "value": "rule_based"},
+                                {"label": "🎪 Quality-Based (Thorough)", "value": "quality_based"}
+                            ],
+                            value="hybrid",
+                            clearable=False,
+                            style={"fontSize": "0.85rem"}
+                        )
+                    ], id="auto-preprocessing-div", className="mb-2"),
+                    
+                    # Manual Mode Settings (hidden by default)
+                    html.Div([
+                        html.Label("Smoothing Algorithm:", className="form-label small fw-bold"),
+                        dcc.Dropdown(
+                            id="smoothing-algorithm",
+                            options=[
+                                {"label": "🔬 Interpolating Spline (Clean Data)", "value": "interpolating_spline"},
+                                {"label": "🌊 Smoothing Spline (Adaptive)", "value": "smoothing_spline"},
+                                {"label": "📈 PCHIP (Shape Preserving)", "value": "pchip"},
+                                {"label": "🛡️ LOWESS (Robust)", "value": "lowess"},
+                                {"label": "📊 Savitzky-Golay", "value": "savitzky_golay"},
+                                {"label": "🔲 Gaussian Filter", "value": "gaussian"},
+                                {"label": "🔧 Median Filter", "value": "median"}
+                            ],
+                            value="smoothing_spline",
+                            clearable=False,
+                            style={"fontSize": "0.85rem"}
+                        ),
+                        
+                        # Algorithm Information Panel
+                        html.Div(id="algorithm-info", className="mt-2 p-2 border rounded", 
+                                style={"backgroundColor": "#f8f9fa", "fontSize": "0.8rem"}),
+                        
+                        # Algorithm-specific Parameters
+                        html.Div([
+                            # Smoothing Spline Parameters
+                            html.Div([
+                                html.Label("Smoothing Factor (s):", className="form-label small"),
+                                dcc.RadioItems(
+                                    id="spline-s-mode",
+                                    options=[
+                                        {"label": " Auto (s = m×σ²)", "value": "auto"},
+                                        {"label": " Manual", "value": "manual"}
+                                    ],
+                                    value="auto",
+                                    className="mb-1",
+                                    style={"fontSize": "0.75rem"}
+                                ),
+                                dcc.Input(
+                                    id="spline-s-value",
+                                    type="number",
+                                    placeholder="0.001",
+                                    min=0,
+                                    step=0.001,
+                                    className="form-control form-control-sm",
+                                    style={"display": "none"}
+                                )
+                            ], id="spline-params", style={"display": "none"}, className="mt-2"),
+                            
+                            # LOWESS Parameters
+                            html.Div([
+                                html.Label("Fraction of data to use:", className="form-label small"),
+                                dcc.Slider(
+                                    id="lowess-frac",
+                                    min=0.1,
+                                    max=0.8,
+                                    step=0.05,
+                                    value=0.3,
+                                    marks={0.1: "0.1", 0.3: "0.3", 0.5: "0.5", 0.8: "0.8"},
+                                    tooltip={"placement": "bottom", "always_visible": True}
+                                )
+                            ], id="lowess-params", style={"display": "none"}, className="mt-2"),
+                            
+                            # Savitzky-Golay Parameters
+                            html.Div([
+                                html.Label("Window Size:", className="form-label small"),
+                                dcc.Slider(
+                                    id="savgol-window",
+                                    min=3,
+                                    max=15,
+                                    step=2,
+                                    value=5,
+                                    marks={3: "3", 5: "5", 7: "7", 9: "9", 11: "11", 13: "13", 15: "15"},
+                                    tooltip={"placement": "bottom", "always_visible": True}
+                                ),
+                                html.Label("Polynomial Order:", className="form-label small mt-2"),
+                                dcc.Slider(
+                                    id="savgol-polyorder",
+                                    min=1,
+                                    max=4,
+                                    step=1,
+                                    value=2,
+                                    marks={1: "1", 2: "2", 3: "3", 4: "4"},
+                                    tooltip={"placement": "bottom", "always_visible": True}
+                                )
+                            ], id="savgol-params", style={"display": "none"}, className="mt-2"),
+                            
+                            # Gaussian Filter Parameters
+                            html.Div([
+                                html.Label("Sigma (smoothing strength):", className="form-label small"),
+                                dcc.Slider(
+                                    id="gaussian-sigma",
+                                    min=0.5,
+                                    max=3.0,
+                                    step=0.1,
+                                    value=1.0,
+                                    marks={0.5: "0.5", 1.0: "1.0", 2.0: "2.0", 3.0: "3.0"},
+                                    tooltip={"placement": "bottom", "always_visible": True}
+                                )
+                            ], id="gaussian-params", style={"display": "none"}, className="mt-2"),
+                            
+                            # Median Filter Parameters
+                            html.Div([
+                                html.Label("Window Size:", className="form-label small"),
+                                dcc.Slider(
+                                    id="median-window",
+                                    min=3,
+                                    max=11,
+                                    step=2,
+                                    value=3,
+                                    marks={3: "3", 5: "5", 7: "7", 9: "9", 11: "11"},
+                                    tooltip={"placement": "bottom", "always_visible": True}
+                                )
+                            ], id="median-params", style={"display": "none"}, className="mt-2")
+                        ], id="algorithm-params-container")
+                        
+                    ], id="manual-preprocessing-div", style={"display": "none"}, className="mb-2"),
+                    
+                    # Preprocessing Preview Section (for uploaded data)
+                    html.Div([
+                        html.Hr(className="my-2"),
+                        html.Button([
+                            html.I(className="fas fa-eye me-1"),
+                            "Preview Preprocessing"
+                        ], id="preview-preprocessing-btn", className="btn btn-outline-info btn-sm",
+                           disabled=True, style={"fontSize": "0.8rem"}),
+                        html.Div(id="preprocessing-preview", className="mt-2"),
+                        # Visualization control buttons (initially hidden)
+                        html.Div([
+                            html.Hr(className="my-2"),
+                            html.Button([
+                                html.I(className="fas fa-chart-line me-1"),
+                                "Show Before/After Comparison"
+                            ], id="show-comparison-btn", className="btn btn-outline-primary btn-sm me-2",
+                               style={"fontSize": "0.8rem", "display": "none"}),
+                            html.Button([
+                                html.I(className="fas fa-wave-square me-1"),
+                                "Show Noise Analysis"
+                            ], id="show-noise-analysis-btn", className="btn btn-outline-info btn-sm",
+                               style={"fontSize": "0.8rem", "display": "none"})
+                        ], id="visualization-buttons", className="mt-2"),
+                        # Containers for visualizations
+                        html.Div(id="preprocessing-comparison-plot", className="mt-3"),
+                        html.Div(id="noise-analysis-plot", className="mt-3")
+                    ], id="preprocessing-preview-section", style={"display": "none"})
+                ], className="mt-2")
             ], className="card-body")
         ], className="card shadow-sm mb-4")
     ], className="row"),
@@ -193,6 +380,10 @@ layout = html.Div([
                 ])
             ], className="d-flex justify-content-between align-items-center mb-3"),
 
+            # Preprocessing Results
+            html.Div(id="preprocessing-summary", className="mb-3"),
+            
+            # Model Results
             html.Div(id="results-summary", className="mb-3"),
 
             dcc.Loading(
