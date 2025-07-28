@@ -9,7 +9,6 @@ from scipy import signal
 from scipy.interpolate import UnivariateSpline, PchipInterpolator
 from scipy.ndimage import gaussian_filter1d
 from statsmodels.nonparametric.smoothers_lowess import lowess
-from sklearn.metrics import mean_squared_error
 import warnings
 from typing import Dict, Tuple, Optional, Callable, List, Union
 
@@ -473,6 +472,112 @@ class EnhancedDielectricPreprocessor:
             recommendations.append('High-quality data detected - using interpolating spline')
         
         processing_info['recommendations'] = recommendations
+    
+    def preprocess_manual(self, df: pd.DataFrame, algorithm_name: str, 
+                         manual_params: Optional[Dict] = None) -> Tuple[pd.DataFrame, Dict]:
+        """
+        Manual preprocessing with specific algorithm selection
+        
+        Args:
+            df: DataFrame with [Frequency_GHz, Dk, Df]
+            algorithm_name: Specific algorithm name to use
+            manual_params: Optional dictionary of algorithm-specific parameters from UI
+        """
+        if df.empty or len(df) < 3:
+            return df.copy(), {'status': 'insufficient_data'}
+        
+        # Extract data
+        frequency = df.iloc[:, 0].values
+        dk = df.iloc[:, 1].values
+        df_loss = df.iloc[:, 2].values
+        
+        # Analyze noise for information purposes
+        noise_metrics = self.noise_analyzer.comprehensive_analysis(dk, df_loss, frequency)
+        
+        processing_info = {
+            'original_length': len(df),
+            'noise_metrics': noise_metrics,
+            'smoothing_applied': False,
+            'dk_algorithm': algorithm_name,
+            'df_algorithm': algorithm_name,
+            'dk_params': {},
+            'df_params': {},
+            'selection_method': 'manual',
+            'preprocessing_mode': 'manual',
+            'recommendations': []
+        }
+        
+        # Get the algorithm function
+        if algorithm_name not in self.algorithm_selector.all_algorithms:
+            processing_info['error'] = f'Unknown algorithm: {algorithm_name}'
+            return df.copy(), processing_info
+        
+        algorithm_func = self.algorithm_selector.all_algorithms[algorithm_name]
+        
+        # Get default parameters for the algorithm
+        dk_params = self.algorithm_selector._get_algorithm_params(
+            algorithm_name, noise_metrics, len(frequency)
+        )
+        df_params = dk_params.copy()
+        
+        # Override with manual parameters from UI if provided
+        if manual_params:
+            if algorithm_name == 'smoothing_spline':
+                if manual_params.get('spline_s_mode') == 'manual' and manual_params.get('spline_s_value'):
+                    dk_params['s'] = manual_params['spline_s_value']
+                    df_params['s'] = manual_params['spline_s_value']
+                else:
+                    # Use automatic s = m×σ² rule
+                    dk_params['noise_var'] = noise_metrics.get('dk_noise_variance')
+                    df_params['noise_var'] = noise_metrics.get('df_noise_variance')
+            elif algorithm_name == 'lowess':
+                if manual_params.get('lowess_frac'):
+                    dk_params['frac'] = manual_params['lowess_frac']
+                    df_params['frac'] = manual_params['lowess_frac']
+            elif algorithm_name == 'savitzky_golay':
+                if manual_params.get('savgol_window'):
+                    dk_params['window_size'] = int(manual_params['savgol_window'])
+                    df_params['window_size'] = int(manual_params['savgol_window'])
+                if manual_params.get('savgol_polyorder'):
+                    dk_params['poly_order'] = int(manual_params['savgol_polyorder'])
+                    df_params['poly_order'] = int(manual_params['savgol_polyorder'])
+            elif algorithm_name == 'gaussian':
+                if manual_params.get('gaussian_sigma'):
+                    dk_params['sigma'] = manual_params['gaussian_sigma']
+                    df_params['sigma'] = manual_params['gaussian_sigma']
+            elif algorithm_name == 'median':
+                if manual_params.get('median_window'):
+                    dk_params['window_size'] = int(manual_params['median_window'])
+                    df_params['window_size'] = int(manual_params['median_window'])
+        else:
+            # Add special parameters for spline methods (default behavior)
+            if algorithm_name == 'smoothing_spline':
+                dk_params['noise_var'] = noise_metrics.get('dk_noise_variance')
+                df_params['noise_var'] = noise_metrics.get('df_noise_variance')
+        
+        try:
+            # Apply manual algorithm
+            dk_smoothed = algorithm_func(frequency, dk, **dk_params)
+            df_smoothed = algorithm_func(frequency, df_loss, **df_params)
+            
+            # Create result DataFrame
+            smoothed_df = df.copy()
+            smoothed_df.iloc[:, 1] = dk_smoothed
+            smoothed_df.iloc[:, 2] = df_smoothed
+            
+            processing_info.update({
+                'smoothing_applied': True,
+                'dk_params': dk_params,
+                'df_params': df_params,
+                'recommendations': [f'Manual {algorithm_name} applied successfully']
+            })
+            
+            return smoothed_df, processing_info
+            
+        except Exception as e:
+            processing_info['error'] = f'Manual preprocessing failed: {str(e)}'
+            processing_info['recommendations'] = [f'Algorithm {algorithm_name} failed, using original data']
+            return df.copy(), processing_info
     
     def get_algorithm_info(self) -> Dict[str, str]:
         """Get information about available algorithms"""

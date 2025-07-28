@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from scipy import signal
 from scipy.ndimage import gaussian_filter1d
-from sklearn.metrics import mean_squared_error
 import warnings
 from typing import Dict, Tuple, Optional, Callable, List
 
