@@ -5,36 +5,62 @@ from utils.helpers import get_numeric_data
 from .base_model import BaseModel
 
 class SarkarModel(BaseModel):
-    
+
     def create_parameters(self, freq, dk_exp, df_exp):
         """
-        Create lmfit.Parameters object for Sarkar model
+        Refactored lmfit.Parameters for Sarkar model with bound-adjustment and expression constraints
         """
         params = lmfit.Parameters()
-        
-        # Better initial guess based on data
-        eps_inf_guess = np.min(dk_exp) * 0.9  # Slightly below minimum Dk
-        eps_s_guess = np.max(dk_exp) * 1.1  # Slightly above maximum Dk
-        
-        # Estimate characteristic frequency from data
-        f_p_guess = np.mean(freq)
-        
-        # Physical bounds - ensure eps_s > eps_inf and add margins
-        min_eps_s = np.max(dk_exp) * 0.8
-        max_eps_s = np.max(dk_exp) * 2.0
-        max_eps_inf = np.min(dk_exp) * 0.95  # Leave margin and ensure eps_inf < eps_s
-        
-        # Ensure initial guess satisfies eps_s > eps_inf
-        if eps_s_guess <= max_eps_inf:
-            eps_s_guess = max_eps_inf * 1.1
-        
-        # Add parameters with bounds
-        params.add('eps_s', value=eps_s_guess, min=min_eps_s, max=max_eps_s)
-        params.add('eps_inf', value=eps_inf_guess, min=1.0, max=max_eps_inf)
-        params.add('f_p', value=f_p_guess, min=freq[0] * 0.1, max=freq[-1] * 10.0)
-        
+
+        # ----------------------------------------------------------
+        # 1. Initial guesses
+        # ----------------------------------------------------------
+        # Real permittivity bounds
+        min_eps = np.min(dk_exp)
+        max_eps = np.max(dk_exp)
+
+        # Guess eps_s just above max, eps_inf just below min
+        eps_s_guess = max_eps * 1.05
+        eps_inf_guess = min_eps * 0.95
+
+        # Guess characteristic frequency at Df peak
+        f_p_guess = freq[np.argmax(df_exp)]
+
+        # ----------------------------------------------------------
+        # 2. Define numeric bounds
+        # ----------------------------------------------------------
+        lb = [max_eps * 0.5,  # eps_s >= 0.5*max_eps
+              1.0,  # eps_inf >= 1
+              freq[0] * 0.1]  # f_p >= 0.1*min_freq
+        ub = [max_eps * 3.0,  # eps_s <= 3*max_eps
+              min_eps * 1.0,  # eps_inf <= min_eps
+              freq[-1] * 10.0]  # f_p <= 10*max_freq
+        p0 = [eps_s_guess, eps_inf_guess, f_p_guess]
+
+        # ----------------------------------------------------------
+        # 3. Adjust guesses to fit within bounds
+        # ----------------------------------------------------------
+        # Uses BaseModel.check_and_adjust_bounds
+        p0_adj = self.check_and_adjust_bounds(
+            p0, lb, ub, param_names=['eps_s', 'eps_inf', 'f_p']
+        )
+        eps_s0, eps_inf0, f_p0 = p0_adj
+
+        # ----------------------------------------------------------
+        # 4. Add parameters with expression constraint for eps_inf
+        # ----------------------------------------------------------
+        # delta_eps ensures eps_s > eps_inf by at least 1e-3
+        params.add('eps_s', value=eps_s0, min=lb[0], max=ub[0])
+        params.add('delta_eps', value=eps_s0 - eps_inf0,
+                   min=1e-3, max=(ub[0] - lb[1]))
+        # eps_inf expressed as eps_s - delta_eps
+        params.add('eps_inf', expr='eps_s - delta_eps')
+
+        # Characteristic frequency
+        params.add('f_p', value=f_p0, min=lb[2], max=ub[2])
+
         return params
-    
+
     def model_function(self, params, freq):
         """
         Sarkar (modified Debye) model function for lmfit
