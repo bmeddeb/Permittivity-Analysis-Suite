@@ -3,17 +3,18 @@ from dash import html, dcc
 import dash_bootstrap_components as dbc
 
 layout = html.Div([
-    # Header
+    # Header - Compact version
     html.Div([
-        html.H1([
-            html.I(className="fas fa-wave-square me-3", style={'color': '#007bff'}),
+        html.H3([
+            html.I(className="fas fa-wave-square me-2", style={'color': '#007bff', 'fontSize': '1.2rem'}),
             "Permittivity Analysis Suite"
-        ], className="text-center mb-4 text-primary"),
+        ], className="text-center mb-1 text-primary", style={'fontSize': '1.5rem', 'fontWeight': '600'}),
         html.P(
             "Advanced Causality Check & Hybrid Debye-Lorentz Modeling",
-            className="text-center text-muted lead"
+            className="text-center text-muted",
+            style={'fontSize': '0.9rem', 'marginBottom': '0.5rem'}
         )
-    ], className="container-fluid bg-light py-4 mb-4"),
+    ], className="container-fluid bg-light py-2 mb-3"),
 
     # Upload Section (full width now)
     html.Div([
@@ -42,15 +43,16 @@ layout = html.Div([
                 dcc.Upload(
                     id="upload-data",
                     children=html.Div([
-                        html.I(className="fas fa-cloud-upload-alt fa-2x mb-3 text-primary"),
+                        html.I(className="fas fa-cloud-upload-alt fa-lg mb-2 text-primary"),
                         html.Br(),
                         html.Div(
                             "Drag and drop or click to select a CSV file",
-                            className="text-muted fw-bold"
+                            className="text-muted fw-bold",
+                            style={"fontSize": "0.9rem"}
                         )
                     ], className="d-flex flex-column align-items-center justify-content-center h-100"),
                     style={
-                        "width": "100%", "height": "140px",
+                        "width": "100%", "height": "100px",
                         "borderWidth": "2px", "borderStyle": "dashed",
                         "borderRadius": "10px", "borderColor": "#007bff",
                         "backgroundColor": "#f8f9fa",
@@ -177,16 +179,24 @@ layout = html.Div([
     # Results Section
     html.Div([
         html.Div([
-            html.H3([
-                html.I(className="fas fa-chart-area me-2"),
-                "Analysis Results"
-            ], className="card-title text-primary"),
+            html.Div([
+                html.H3([
+                    html.I(className="fas fa-chart-area me-2"),
+                    "Analysis Results"
+                ], className="card-title text-primary mb-0"),
+                html.Div([
+                    html.Button([
+                        html.I(className="fas fa-download me-2"),
+                        "Download CSV"
+                    ], id="download-csv-btn", className="btn btn-success btn-sm", disabled=True),
+                    dcc.Download(id="download-csv")
+                ])
+            ], className="d-flex justify-content-between align-items-center mb-3"),
 
             html.Div(id="results-summary", className="mb-3"),
 
-            dcc.Graph(id="permittivity-plots", style={"height": "700px"}),
-
-            html.Div(id="download-section", className="mt-3")
+            dcc.Graph(id="permittivity-plots", style={"height": "700px"})
         ], className="card-body")
-    ], className="card shadow-sm mb-4", id="results-card")
+    ], className="card shadow-sm mb-4", id="results-card"),
+
 ], className="container", style={"maxWidth": "1200px"})

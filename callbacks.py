@@ -1,5 +1,7 @@
 # callbacks.py - Updated for multiple sliders
-from dash import Input, Output, State, html
+from dash import Input, Output, State, html, dcc
+import pandas as pd
+import io
 from utils.helpers import parse_contents
 from analysis import run_analysis
 from plots import create_permittivity_plot
@@ -50,11 +52,12 @@ def register_callbacks(app):
         if kk: selected_models.append("kk")
         return selected_models
 
+
     @app.callback(
         [
             Output("results-summary", "children"),
             Output("permittivity-plots", "figure"),
-            Output("download-section", "children"),
+            Output("download-csv-btn", "disabled"),
         ],
         [
             Input("upload-data", "contents"),
@@ -78,7 +81,7 @@ def register_callbacks(app):
         print(f"Filename: {filename}")
 
         if not contents:
-            return html.Div(), {}, html.Div()
+            return html.Div(), {}, True
 
         print("Parsing contents...")
         df = parse_contents(contents, filename)
@@ -96,6 +99,7 @@ def register_callbacks(app):
         }
 
         # Run analysis with appropriate mode
+        print(f"Starting {analysis_mode} mode analysis...")
         results = run_analysis(df, selected_models or [], model_params, analysis_mode)
         print(f"Analysis complete. Results type: {type(results)}")
 
@@ -109,7 +113,7 @@ def register_callbacks(app):
                         html.Strong(f"Error: {results['error']}")
                     ], className="alert alert-danger")
                 ])
-                return summary, {}, html.Div()
+                return summary, {}, True
             
             # Extract auto-selection results
             best_model_name = results["best_model_name"]
@@ -157,7 +161,7 @@ def register_callbacks(app):
                         html.Strong(f"Error: {results['error']}")
                     ], className="alert alert-danger")
                 ])
-                return summary, {}, html.Div()
+                return summary, {}, True
             
             enhanced_comparison = results["enhanced_comparison"]
             valid_results = results["valid_results"]
@@ -253,5 +257,106 @@ def register_callbacks(app):
         fig = create_permittivity_plot(plot_results, df, best_model=plot_best_model)
         print("Plot created successfully")
 
+        # Determine if download button should be enabled (only if exactly one model)
+        valid_models = [k for k, v in plot_results.items() if v is not None and k != "kk"]
+        download_disabled = len(valid_models) != 1
+
         print("=== CALLBACK COMPLETE ===")
-        return summary, fig, html.Div("Download section")
+        return summary, fig, download_disabled
+
+    # Store data for download
+    @app.callback(
+        Output("download-csv", "data"),
+        [Input("download-csv-btn", "n_clicks")],
+        [
+            State("upload-data", "contents"),
+            State("upload-data", "filename"),
+            State("analysis-mode", "value"),
+            State("selection-method", "value"),
+            State("model-selection-internal", "data"),
+            State("n-terms-slider", "value"),
+            State("multipole-terms-slider", "value"),
+            State("lorentz-terms-slider", "value"),
+        ],
+        prevent_initial_call=True
+    )
+    def download_csv(n_clicks, contents, filename, analysis_mode, selection_method, 
+                     selected_models, hybrid_terms, multipole_terms, lorentz_terms):
+        if not n_clicks or not contents:
+            return None
+            
+        # Parse data and run analysis again to get current results
+        df = parse_contents(contents, filename)
+        model_params = {
+            'hybrid_terms': hybrid_terms,
+            'multipole_terms': multipole_terms,
+            'lorentz_terms': lorentz_terms,
+            'selection_method': selection_method
+        }
+        results = run_analysis(df, selected_models or [], model_params, analysis_mode)
+        
+        # Determine the single model to export
+        single_model_name = None
+        single_model_result = None
+        
+        if analysis_mode == "auto":
+            if "error" not in results:
+                single_model_name = results["best_model_name"]
+                single_model_result = results["best_model_result"]
+        elif analysis_mode == "auto_compare":
+            if "error" not in results:
+                valid_results = results["valid_results"]
+                valid_models = [k for k, v in valid_results.items() if v is not None and k != "kk"]
+                if len(valid_models) == 1:
+                    single_model_name = valid_models[0]
+                    single_model_result = valid_results[single_model_name]
+        else:  # manual mode
+            valid_models = [k for k, v in results.items() if v is not None and k != "kk"]
+            if len(valid_models) == 1:
+                single_model_name = valid_models[0]
+                single_model_result = results[single_model_name]
+        
+        if not single_model_name or not single_model_result:
+            return None
+            
+        # Extract data for CSV
+        freq_vals = None
+        dk_fit = None
+        df_fit = None
+        
+        # Get frequency values
+        if "freq" in single_model_result:
+            freq_vals = single_model_result["freq"]
+        elif "freq_ghz" in single_model_result:
+            freq_vals = single_model_result["freq_ghz"]
+        else:
+            return None
+            
+        # Get fitted values
+        if "dk_fit" in single_model_result and "df_fit" in single_model_result:
+            dk_fit = single_model_result["dk_fit"]
+            df_fit = single_model_result["df_fit"]
+        elif "eps_fit" in single_model_result:
+            eps_fit = single_model_result["eps_fit"]
+            if hasattr(eps_fit, 'real') and hasattr(eps_fit, 'imag'):
+                dk_fit = eps_fit.real
+                df_fit = eps_fit.imag
+            else:
+                dk_fit = eps_fit
+                df_fit = [0] * len(dk_fit)
+        else:
+            return None
+            
+        # Create DataFrame for export
+        export_df = pd.DataFrame({
+            'Frequency_GHz': freq_vals,
+            'Dk': dk_fit,
+            'Df': df_fit
+        })
+        
+        # Generate filename
+        base_name = filename.rsplit('.', 1)[0] if filename else "data"
+        model_name = single_model_name.replace('_', '-')
+        export_filename = f"{base_name}_{model_name}.csv"
+        
+        return dcc.send_data_frame(export_df.to_csv, export_filename, index=False)

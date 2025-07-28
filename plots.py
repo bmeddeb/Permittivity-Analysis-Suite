@@ -128,7 +128,7 @@ def create_permittivity_plot(results, df, best_model=None):
             'x': 0.5,
             'xanchor': 'center'
         },
-        height=850,
+        height=700,
         legend=dict(
             orientation="v",
             x=1.02,
