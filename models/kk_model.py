@@ -42,6 +42,11 @@ class KKModel(BaseModel):
         print(f"RMSE between measured and KK-reconstructed Dk: {rmse_dk:.4f}")
         print(f"Causality status: {kk_results['causality_status']}")
 
+        # Create fitted_params in expected format - KK model only has eps_inf
+        fitted_params = {
+            'eps_inf': kk_results["eps_inf"]
+        }
+
         # Return results in format compatible with other models
         return {
             "freq": kk_results["freq_ghz"],
@@ -58,7 +63,9 @@ class KKModel(BaseModel):
             "rmse_dk": rmse_dk,
             "rmse_df": 0.0,  # Not applicable for KK check
             "cost": kk_results["mean_err_full"],
-            "params_fit": [kk_results["eps_inf"]],  # Only eps_inf as "parameter"
+            # Only eps_inf as "parameter"
+            "params_fit": [kk_results["eps_inf"]],
+            "fitted_params": fitted_params,  # Add expected fitted_params dictionary
 
             # Additional KK-specific results
             "mean_error_full": kk_results["mean_err_full"],
