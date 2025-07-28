@@ -84,7 +84,7 @@ layout = html.Div([
                             {"label": " Manual Selection", "value": "manual"},
                             {"label": " No Smoothing", "value": "none"}
                         ],
-                        value="auto",
+                        value="none",
                         className="mb-2",
                         style={"fontSize": "0.9rem"}
                     ),
