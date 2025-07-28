@@ -4,15 +4,15 @@ A comprehensive Dash web application for analyzing dielectric permittivity data 
 
 ## 🎯 Supported Models
 
-✅ **Simple Debye Model** – Single relaxation time analysis  
-✅ **Multi-Pole Debye Model** – Multiple relaxation terms  
-✅ **Cole-Cole Model** – Symmetric broadening distribution  
-✅ **Cole-Davidson Model** – Asymmetric broadening distribution  
-✅ **Havriliak-Negami Model** – General distribution with α and β factors  
-✅ **Lorentz Oscillator Model** – Resonant behavior at high frequencies  
-✅ **Sarkar Model** – Debye model with conductivity terms  
-✅ **Hybrid Debye-Lorentz Model** – Combined relaxation and resonance  
-✅ **Kramers-Kronig Causality Check** – Model-free validation of measured data  
+ **Simple Debye Model** – Single relaxation time analysis  
+ **Multi-Pole Debye Model** – Multiple relaxation terms  
+ **Cole-Cole Model** – Symmetric broadening distribution  
+ **Cole-Davidson Model** – Asymmetric broadening distribution  
+ **Havriliak-Negami Model** – General distribution with α and β factors  
+ **Lorentz Oscillator Model** – Resonant behavior at high frequencies  
+ **Sarkar Model** – Debye model with conductivity terms  
+ **Hybrid Debye-Lorentz Model** – Combined relaxation and resonance  
+ **Kramers-Kronig Causality Check** – Model-free validation of measured data  
 
 ---
 
@@ -40,10 +40,10 @@ chmod +x run.sh
 ```
 
 The `run.sh` script will automatically:
-- ✅ Check and install `uv` package manager if needed
-- ✅ Create Python virtual environment
-- ✅ Install all dependencies
-- ✅ Launch the application
+-  Check and install `uv` package manager if needed
+-  Create Python virtual environment
+-  Install all dependencies
+-  Launch the application
 
 #### Option 2: Manual Setup (macOS)
 ```bash
@@ -67,7 +67,7 @@ The `run.sh` script is macOS/Linux specific. Windows users should set up manuall
 
 ```cmd
 git clone https://github.com/bmeddeb/Permittivity-Analysis-Suite.git
-cd permittivity_app
+cd Permittivity-Analysis-Suite
 
 # Create virtual environment
 python -m venv venv
@@ -85,7 +85,7 @@ python app.py
 **Alternative with conda:**
 ```cmd
 git clone https://github.com/bmeddeb/Permittivity-Analysis-Suite.git
-cd permittivity_app
+cd Permittivity-Analysis-Suite
 
 # Create conda environment
 conda create -n permittivity python=3.9
