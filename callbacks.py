@@ -22,6 +22,34 @@ def register_callbacks(app):
             # Hide manual selection, show selection method
             return {"display": "none"}, {"display": "block"}
 
+    # Callback to convert switch states to model selection list
+    @app.callback(
+        Output("model-selection-internal", "data"),
+        [
+            Input("switch-debye", "value"),
+            Input("switch-multipole", "value"),
+            Input("switch-cole-cole", "value"),
+            Input("switch-cole-davidson", "value"),
+            Input("switch-havriliak", "value"),
+            Input("switch-lorentz", "value"),
+            Input("switch-sarkar", "value"),
+            Input("switch-hybrid", "value"),
+            Input("switch-kk", "value"),
+        ]
+    )
+    def convert_switches_to_selection(debye, multipole, cole_cole, cole_davidson, havriliak, lorentz, sarkar, hybrid, kk):
+        selected_models = []
+        if debye: selected_models.append("debye")
+        if multipole: selected_models.append("multipole_debye")
+        if cole_cole: selected_models.append("cole_cole")
+        if cole_davidson: selected_models.append("cole_davidson")
+        if havriliak: selected_models.append("havriliak_negami")
+        if lorentz: selected_models.append("lorentz")
+        if sarkar: selected_models.append("sarkar")
+        if hybrid: selected_models.append("hybrid")
+        if kk: selected_models.append("kk")
+        return selected_models
+
     @app.callback(
         [
             Output("results-summary", "children"),
@@ -32,7 +60,7 @@ def register_callbacks(app):
             Input("upload-data", "contents"),
             Input("analysis-mode", "value"),
             Input("selection-method", "value"),
-            Input("model-selection", "value"),
+            Input("model-selection-internal", "data"),
             Input("n-terms-slider", "value"),  # Hybrid model terms
             Input("multipole-terms-slider", "value"),  # Multipole Debye terms
             Input("lorentz-terms-slider", "value"),  # Lorentz oscillators

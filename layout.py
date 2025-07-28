@@ -1,5 +1,6 @@
 # layout.py
 from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 layout = html.Div([
     # Header
@@ -14,15 +15,26 @@ layout = html.Div([
         )
     ], className="container-fluid bg-light py-4 mb-4"),
 
-    # Row with Upload & Config Side by Side
+    # Upload Section (full width now)
     html.Div([
-        # Upload (6-width)
         html.Div([
             html.Div([
-                html.H3([
-                    html.I(className="fas fa-upload me-2"),
-                    "Data Upload"
-                ], className="card-title text-primary"),
+                html.Div([
+                    html.H3([
+                        html.I(className="fas fa-upload me-2"),
+                        "Data Upload"
+                    ], className="card-title text-primary"),
+                    # Configuration button
+                    html.Button([
+                        html.I(className="fas fa-cogs me-2"),
+                        "Analysis Configuration"
+                    ], 
+                    className="btn btn-outline-primary",
+                    id="config-button",
+                    **{"data-bs-toggle": "offcanvas", "data-bs-target": "#configOffcanvas"}
+                    )
+                ], className="d-flex justify-content-between align-items-center mb-3"),
+                
                 html.P(
                     "Upload a CSV file with [Frequency_GHz, Dk, Df]",
                     className="card-text text-muted"
@@ -51,15 +63,26 @@ layout = html.Div([
                     className="form-text text-muted mt-2"
                 )
             ], className="card-body")
-        ], className="card shadow-sm mb-4 col-md-6"),
+        ], className="card shadow-sm mb-4")
+    ], className="row"),
 
-        # Analysis Config (6-width)
+    # Hidden data store for model selection
+    dcc.Store(id="model-selection-internal", data=["debye"]),
+
+    # Off-canvas Configuration Panel
+    html.Div([
         html.Div([
             html.Div([
-                html.H3([
+                html.H4([
                     html.I(className="fas fa-cogs me-2"),
                     "Analysis Configuration"
-                ], className="card-title text-primary"),
+                ], className="offcanvas-title text-primary"),
+                html.Button([
+                    html.I(className="fas fa-times")
+                ], className="btn-close", **{"data-bs-dismiss": "offcanvas"})
+            ], className="offcanvas-header"),
+            
+            html.Div([
                 # Auto-Selection Mode Toggle
                 html.Div([
                     html.Label("Analysis Mode:", className="form-label fw-bold"),
@@ -92,25 +115,22 @@ layout = html.Div([
                     )
                 ], id="selection-method-div", className="mb-3"),
 
-                # Manual Model Selection (hidden by default)
+                # Manual Model Selection with Switches (hidden by default)
                 html.Div([
-                    html.Label("Select Analysis Methods:", className="form-label fw-bold"),
-                    dcc.Checklist(
-                        id="model-selection",
-                        options=[
-                            {"label": "Simple Debye Model", "value": "debye"},
-                            {"label": "Multi-Pole Debye Model", "value": "multipole_debye"},
-                            {"label": "Cole-Cole Model", "value": "cole_cole"},
-                            {"label": "Cole-Davidson Model", "value": "cole_davidson"},
-                            {"label": "Havriliak-Negami Model", "value": "havriliak_negami"},
-                            {"label": "Lorentz Oscillator Model", "value": "lorentz"},
-                            {"label": "D. Sarkar Model", "value": "sarkar"},
-                            {"label": "Hybrid Debye-Lorentz Model", "value": "hybrid"},
-                            {"label": "KK Causality Check", "value": "kk"}
-                        ],
-                        value=["debye"]
-                    )
+                    html.Label("Select Analysis Methods:", className="form-label fw-bold mb-3"),
+                    html.Div([
+                        dbc.Switch(id="switch-debye", label="Simple Debye Model", value=True),
+                        dbc.Switch(id="switch-multipole", label="Multi-Pole Debye Model", value=False),
+                        dbc.Switch(id="switch-cole-cole", label="Cole-Cole Model", value=False),
+                        dbc.Switch(id="switch-cole-davidson", label="Cole-Davidson Model", value=False),
+                        dbc.Switch(id="switch-havriliak", label="Havriliak-Negami Model", value=False),
+                        dbc.Switch(id="switch-lorentz", label="Lorentz Oscillator Model", value=False),
+                        dbc.Switch(id="switch-sarkar", label="D. Sarkar Model", value=False),
+                        dbc.Switch(id="switch-hybrid", label="Hybrid Debye-Lorentz Model", value=False),
+                        dbc.Switch(id="switch-kk", label="KK Causality Check", value=False)
+                    ], className="d-flex flex-column gap-2")
                 ], id="manual-selection-div", style={"display": "none"}, className="mb-3"),
+                
                 html.Div([
                     html.Label("Number of Terms for Hybrid Model:", className="form-label fw-bold"),
                     dcc.Slider(
@@ -150,9 +170,9 @@ layout = html.Div([
                         "Sliders only apply in Manual mode."
                     ], className="text-info")
                 ], className="mb-2")
-            ], className="card-body")
-        ], className="card shadow-sm mb-4 col-md-6")
-    ], className="row"),
+            ], className="offcanvas-body")
+        ], className="offcanvas offcanvas-end", id="configOffcanvas")
+    ]),
 
     # Results Section
     html.Div([
