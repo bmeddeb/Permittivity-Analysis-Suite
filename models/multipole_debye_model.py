@@ -1,18 +1,59 @@
 # models/multipole_debye_model.py
 import numpy as np
+import lmfit
 from utils.helpers import get_numeric_data
 from .base_model import BaseModel
 
 
 class MultiPoleDebyeModel(BaseModel):
-    def model(self, params, freq, N):
+    def __init__(self, N=3):
         """
-        Multi-pole Debye model
-        freq: frequency in GHz
+        Initialize Multi-pole Debye model with N terms
         """
-        delta_eps = params[:N]
-        tau = params[N:2 * N]  # relaxation times in seconds
-        eps_inf = params[-1]
+        self.N = N
+    
+    def create_parameters(self, freq, dk_exp, df_exp):
+        """
+        Create lmfit.Parameters object for Multi-pole Debye model
+        """
+        params = lmfit.Parameters()
+        
+        # Better initial parameter estimates
+        dk_range = np.max(dk_exp) - np.min(dk_exp)
+        delta_eps_initial = dk_range / self.N  # Split the dielectric strength
+        
+        # Estimate relaxation times based on frequency range
+        freq_min_hz = np.min(freq) * 1e9
+        freq_max_hz = np.max(freq) * 1e9
+        
+        # Spread relaxation times logarithmically across frequency range
+        tau_min = 1.0 / (2 * np.pi * freq_max_hz * 10)  # 10x faster than max freq
+        tau_max = 1.0 / (2 * np.pi * freq_min_hz / 10)  # 10x slower than min freq
+        tau_initial = np.logspace(np.log10(tau_min), np.log10(tau_max), self.N)
+        
+        eps_inf_initial = np.min(dk_exp) * 0.9  # Slightly below minimum
+        
+        # Physical bounds
+        max_delta_eps = dk_range * 2
+        max_eps_inf = np.min(dk_exp) * 0.95  # Leave margin
+        
+        # Add parameters
+        for i in range(self.N):
+            params.add(f'delta_eps_{i}', value=delta_eps_initial, min=0.0, max=max_delta_eps)
+            params.add(f'tau_{i}', value=tau_initial[i], min=1e-15, max=1e-6)
+        
+        params.add('eps_inf', value=eps_inf_initial, min=1.0, max=max_eps_inf)
+        
+        return params
+    
+    def model_function(self, params, freq):
+        """
+        Multi-pole Debye model function for lmfit
+        """
+        # Extract parameter values
+        delta_eps = np.array([params[f'delta_eps_{i}'].value for i in range(self.N)])
+        tau = np.array([params[f'tau_{i}'].value for i in range(self.N)])
+        eps_inf = params['eps_inf'].value
 
         # Convert frequency to angular frequency (rad/s)
         omega = 2 * np.pi * freq * 1e9  # freq in GHz -> rad/s
@@ -51,89 +92,56 @@ class MultiPoleDebyeModel(BaseModel):
 
         return residual
 
-    def analyze(self, df, N=3):
+    def analyze(self, df):
         freq_ghz, dk_exp, df_exp = get_numeric_data(df)
 
-        print(f"Multipole Debye (N={N})")
+        print(f"Multipole Debye Model (N={self.N}, lmfit)")
         print(f"Experimental Dk range: {np.min(dk_exp):.3f} to {np.max(dk_exp):.3f}")
         print(f"Experimental Df range: {np.min(df_exp):.6f} to {np.max(df_exp):.6f}")
 
-        # Better initial parameter estimates
-        dk_range = np.max(dk_exp) - np.min(dk_exp)
-        delta_eps0 = np.ones(N) * dk_range / N  # Split the dielectric strength
-
-        # Estimate relaxation times based on frequency range
-        freq_min_hz = np.min(freq_ghz) * 1e9
-        freq_max_hz = np.max(freq_ghz) * 1e9
-
-        # Spread relaxation times logarithmically across frequency range
-        tau_min = 1.0 / (2 * np.pi * freq_max_hz * 10)  # 10x faster than max freq
-        tau_max = 1.0 / (2 * np.pi * freq_min_hz / 10)  # 10x slower than min freq
-        tau0 = np.logspace(np.log10(tau_min), np.log10(tau_max), N)
-
-        eps_inf0 = np.min(dk_exp) * 0.9  # Slightly below minimum
-
-        p0 = np.concatenate([delta_eps0, tau0, [eps_inf0]])
-
-        print(f"Initial guess - delta_eps: {delta_eps0}")
-        print(f"Initial guess - tau (s): {tau0}")
-        print(f"Initial guess - eps_inf: {eps_inf0:.3f}")
-
-        # Physical bounds - add margins to prevent bounds errors
-        max_delta_eps = dk_range * 2
-        max_eps_inf = np.min(dk_exp) * 0.95  # Leave margin
-
-        lower_bounds = np.concatenate([
-            np.zeros(N),  # delta_eps >= 0
-            np.ones(N) * 1e-15,  # tau >= 1 fs (very fast)
-            [1.0]  # eps_inf >= 1
-        ])
-        upper_bounds = np.concatenate([
-            np.ones(N) * max_delta_eps,  # delta_eps reasonable upper bound
-            np.ones(N) * 1e-6,  # tau <= 1 µs (very slow)
-            [max_eps_inf]  # eps_inf < min(dk) with margin
-        ])
-
-        # Display bounds for transparency
-        print(f"Bounds - delta_eps: [0.0, {max_delta_eps:.3f}]")
+        # Create parameters and print initial guesses
+        params = self.create_parameters(freq_ghz, dk_exp, df_exp)
+        
+        delta_eps_initial = [params[f'delta_eps_{i}'].value for i in range(self.N)]
+        tau_initial = [params[f'tau_{i}'].value for i in range(self.N)]
+        
+        print(f"Initial guess - delta_eps: {delta_eps_initial}")
+        print(f"Initial guess - tau (s): {tau_initial}")
+        print(f"Initial guess - eps_inf: {params['eps_inf'].value:.3f}")
+        
+        print(f"Bounds - delta_eps: [0.0, {params['delta_eps_0'].max:.3f}]")
         print(f"Bounds - tau: [1e-15, 1e-6]")
-        print(f"Bounds - eps_inf: [1.0, {max_eps_inf:.3f}]")
+        print(f"Bounds - eps_inf: [1.0, {params['eps_inf'].max:.3f}]")
 
-        # Create parameter names for debugging
-        param_names = []
-        for i in range(N):
-            param_names.append(f'delta_eps_{i}')
-        for i in range(N):
-            param_names.append(f'tau_{i}')
-        param_names.append('eps_inf')
-
-        # Use safe least_squares from BaseModel
-        res = self.safe_least_squares(
-            self.objective,
-            p0,
-            bounds=(lower_bounds, upper_bounds),
-            args=(freq_ghz, dk_exp, df_exp, N),
-            param_names=param_names
-        )
+        # Fit the model using lmfit
+        result = self.fit_model(freq_ghz, dk_exp, df_exp)
 
         # Calculate final fitted values
-        eps_fit = self.model(res.x, freq_ghz, N)
+        eps_fit = self.model_function(result.params, freq_ghz)
 
         min_imag = np.min(eps_fit.imag)
         max_imag = np.max(eps_fit.imag)
 
         print(f"Fitted - Imaginary part range: {min_imag:.6f} to {max_imag:.6f}")
-        print(f"Fitted - delta_eps: {res.x[:N]}")
-        print(f"Fitted - tau (s): {res.x[N:2 * N]}")
-        print(f"Fitted - eps_inf: {res.x[-1]:.3f}")
-        print(f"Optimization success: {res.success}")
+        
+        # Extract fitted parameters
+        delta_eps_fitted = [result.params[f'delta_eps_{i}'].value for i in range(self.N)]
+        tau_fitted = [result.params[f'tau_{i}'].value for i in range(self.N)]
+        eps_inf_fitted = result.params['eps_inf'].value
+        
+        print(f"Fitted - delta_eps: {delta_eps_fitted}")
+        print(f"Fitted - tau (s): {tau_fitted}")
+        print(f"Fitted - eps_inf: {eps_inf_fitted:.3f} ± {result.params['eps_inf'].stderr or 0:.3f}")
+        print(f"Optimization success: {result.success}")
+        print(f"AIC: {result.aic:.2f}")
+        print(f"BIC: {result.bic:.2f}")
 
         # Physical interpretation
-        characteristic_freqs_ghz = 1 / (2 * np.pi * res.x[N:2 * N]) / 1e9
+        characteristic_freqs_ghz = [1 / (2 * np.pi * tau) / 1e9 for tau in tau_fitted]
 
         print("Relaxation processes:")
-        for i in range(N):
-            print(f"  Process {i}: Δε = {res.x[i]:.3f}, f_char = {characteristic_freqs_ghz[i]:.2f} GHz")
+        for i in range(self.N):
+            print(f"  Process {i}: Δε = {delta_eps_fitted[i]:.3f}, f_char = {characteristic_freqs_ghz[i]:.2f} GHz")
 
         # Check if relaxations are within measurement range
         freq_min_ghz, freq_max_ghz = np.min(freq_ghz), np.max(freq_ghz)
@@ -148,16 +156,16 @@ class MultiPoleDebyeModel(BaseModel):
                 print(f"  Process {i} relaxation ({f_char:.2f} GHz) is within measurement range")
                 processes_in_range += 1
 
-        print(f"Processes within measurement range: {processes_in_range}/{N}")
+        print(f"Processes within measurement range: {processes_in_range}/{self.N}")
 
         # Check for dominant processes
-        dominant_process = np.argmax(res.x[:N])
-        print(f"Dominant process: {dominant_process} (Δε = {res.x[dominant_process]:.3f})")
+        dominant_process = np.argmax(delta_eps_fitted)
+        print(f"Dominant process: {dominant_process} (Δε = {delta_eps_fitted[dominant_process]:.3f})")
 
         # Check time constant separation
-        tau_sorted = np.sort(res.x[N:2 * N])
-        if N > 1:
-            min_separation = np.min(tau_sorted[1:] / tau_sorted[:-1])
+        tau_sorted = np.sort(tau_fitted)
+        if self.N > 1:
+            min_separation = np.min([tau_sorted[i+1] / tau_sorted[i] for i in range(self.N-1)])
             print(f"Minimum time constant separation factor: {min_separation:.2f}")
             if min_separation < 3:
                 print("Warning: Some relaxation times are very close - consider reducing N")
@@ -165,13 +173,19 @@ class MultiPoleDebyeModel(BaseModel):
         # Handle negative imaginary parts using BaseModel method
         eps_fit_corrected = self.handle_negative_imaginary(eps_fit, "Multipole Debye model")
 
+        # Create params_fit array for compatibility
+        params_fit = delta_eps_fitted + tau_fitted + [eps_inf_fitted]
+
         return {
-            "freq": freq_ghz,
+            "freq_ghz": freq_ghz,
             "eps_fit": eps_fit_corrected,
             "dk_fit": eps_fit_corrected.real,
             "df_fit": eps_fit_corrected.imag,
-            "params_fit": res.x,
+            "params_fit": params_fit,
             "dk_exp": dk_exp,
-            "success": res.success,
-            "cost": res.cost
+            "success": result.success,
+            "cost": result.chisqr,
+            "aic": result.aic,
+            "bic": result.bic,
+            "lmfit_result": result
         }

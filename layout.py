@@ -1,28 +1,41 @@
 # layout.py
 from dash import html, dcc
+import dash_bootstrap_components as dbc
 
 layout = html.Div([
-    # Header
+    # Header - Compact version
     html.Div([
-        html.H1([
-            html.I(className="fas fa-wave-square me-3", style={'color': '#007bff'}),
+        html.H3([
+            html.I(className="fas fa-wave-square me-2", style={'color': '#007bff', 'fontSize': '1.2rem'}),
             "Permittivity Analysis Suite"
-        ], className="text-center mb-4 text-primary"),
+        ], className="text-center mb-1 text-primary", style={'fontSize': '1.5rem', 'fontWeight': '600'}),
         html.P(
             "Advanced Causality Check & Hybrid Debye-Lorentz Modeling",
-            className="text-center text-muted lead"
+            className="text-center text-muted",
+            style={'fontSize': '0.9rem', 'marginBottom': '0.5rem'}
         )
-    ], className="container-fluid bg-light py-4 mb-4"),
+    ], className="container-fluid bg-light py-2 mb-3"),
 
-    # Row with Upload & Config Side by Side
+    # Upload Section (full width now)
     html.Div([
-        # Upload (6-width)
         html.Div([
             html.Div([
-                html.H3([
-                    html.I(className="fas fa-upload me-2"),
-                    "Data Upload"
-                ], className="card-title text-primary"),
+                html.Div([
+                    html.H3([
+                        html.I(className="fas fa-upload me-2"),
+                        "Data Upload"
+                    ], className="card-title text-primary"),
+                    # Configuration button
+                    html.Button([
+                        html.I(className="fas fa-cogs me-2"),
+                        "Analysis Configuration"
+                    ], 
+                    className="btn btn-outline-primary",
+                    id="config-button",
+                    **{"data-bs-toggle": "offcanvas", "data-bs-target": "#configOffcanvas"}
+                    )
+                ], className="d-flex justify-content-between align-items-center mb-3"),
+                
                 html.P(
                     "Upload a CSV file with [Frequency_GHz, Dk, Df]",
                     className="card-text text-muted"
@@ -30,15 +43,16 @@ layout = html.Div([
                 dcc.Upload(
                     id="upload-data",
                     children=html.Div([
-                        html.I(className="fas fa-cloud-upload-alt fa-2x mb-3 text-primary"),
+                        html.I(className="fas fa-cloud-upload-alt fa-lg mb-2 text-primary"),
                         html.Br(),
                         html.Div(
                             "Drag and drop or click to select a CSV file",
-                            className="text-muted fw-bold"
+                            className="text-muted fw-bold",
+                            style={"fontSize": "0.9rem"}
                         )
                     ], className="d-flex flex-column align-items-center justify-content-center h-100"),
                     style={
-                        "width": "100%", "height": "140px",
+                        "width": "100%", "height": "100px",
                         "borderWidth": "2px", "borderStyle": "dashed",
                         "borderRadius": "10px", "borderColor": "#007bff",
                         "backgroundColor": "#f8f9fa",
@@ -51,34 +65,74 @@ layout = html.Div([
                     className="form-text text-muted mt-2"
                 )
             ], className="card-body")
-        ], className="card shadow-sm mb-4 col-md-6"),
+        ], className="card shadow-sm mb-4")
+    ], className="row"),
 
-        # Analysis Config (6-width)
+    # Hidden data store for model selection
+    dcc.Store(id="model-selection-internal", data=["debye"]),
+
+    # Off-canvas Configuration Panel
+    html.Div([
         html.Div([
             html.Div([
-                html.H3([
+                html.H4([
                     html.I(className="fas fa-cogs me-2"),
                     "Analysis Configuration"
-                ], className="card-title text-primary"),
+                ], className="offcanvas-title text-primary"),
+                html.Button([
+                    html.I(className="fas fa-times")
+                ], className="btn-close", **{"data-bs-dismiss": "offcanvas"})
+            ], className="offcanvas-header"),
+            
+            html.Div([
+                # Auto-Selection Mode Toggle
                 html.Div([
-                    html.Label("Select Analysis Methods:", className="form-label fw-bold"),
-                    dcc.Checklist(
-                        id="model-selection",
+                    html.Label("Analysis Mode:", className="form-label fw-bold"),
+                    dcc.RadioItems(
+                        id="analysis-mode",
                         options=[
-                            {"label": "Simple Debye Model", "value": "debye"},
-                            {"label": "Multi-Pole Debye Model", "value": "multipole_debye"},
-                            {"label": "Cole-Cole Model", "value": "cole_cole"},
-                            {"label": "Cole-Davidson Model", "value": "cole_davidson"},
-                            {"label": "Havriliak-Negami Model", "value": "havriliak_negami"},
-                            {"label": "Lorentz Oscillator Model", "value": "lorentz"},
-                            {"label": "D. Sarkar Model", "value": "sarkar"},
-                            {"label": "Hybrid Debye-Lorentz Model", "value": "hybrid"},
-                            {"label": "KK Causality Check", "value": "kk"}
+                            {"label": " Auto-Select Best Model", "value": "auto"},
+                            {"label": " Auto + Compare All Models", "value": "auto_compare"},
+                            {"label": " Manual Model Selection", "value": "manual"}
                         ],
-                        value=["debye"]
+                        value="auto",
+                        className="mb-3",
+                        style={"display": "flex", "flexDirection": "column", "gap": "8px"}
                     )
+                ], className="mb-3"),
 
-                ]),
+                # Selection Method (for auto modes)
+                html.Div([
+                    html.Label("Selection Criteria:", className="form-label fw-bold"),
+                    dcc.Dropdown(
+                        id="selection-method",
+                        options=[
+                            {"label": "🎯 Balanced (AIC + RMSE)", "value": "balanced"},
+                            {"label": "📊 Statistical Rigor (AIC-focused)", "value": "aic_focused"},
+                            {"label": "🎯 Best Accuracy (RMSE-focused)", "value": "rmse_focused"}
+                        ],
+                        value="balanced",
+                        clearable=False,
+                        className="mb-3"
+                    )
+                ], id="selection-method-div", className="mb-3"),
+
+                # Manual Model Selection with Switches (hidden by default)
+                html.Div([
+                    html.Label("Select Analysis Methods:", className="form-label fw-bold mb-3"),
+                    html.Div([
+                        dbc.Switch(id="switch-debye", label="Simple Debye Model", value=True),
+                        dbc.Switch(id="switch-multipole", label="Multi-Pole Debye Model", value=False),
+                        dbc.Switch(id="switch-cole-cole", label="Cole-Cole Model", value=False),
+                        dbc.Switch(id="switch-cole-davidson", label="Cole-Davidson Model", value=False),
+                        dbc.Switch(id="switch-havriliak", label="Havriliak-Negami Model", value=False),
+                        dbc.Switch(id="switch-lorentz", label="Lorentz Oscillator Model", value=False),
+                        dbc.Switch(id="switch-sarkar", label="D. Sarkar Model", value=False),
+                        dbc.Switch(id="switch-hybrid", label="Hybrid Debye-Lorentz Model", value=False),
+                        dbc.Switch(id="switch-kk", label="KK Causality Check", value=False)
+                    ], className="d-flex flex-column gap-2")
+                ], id="manual-selection-div", style={"display": "none"}, className="mb-3"),
+                
                 html.Div([
                     html.Label("Number of Terms for Hybrid Model:", className="form-label fw-bold"),
                     dcc.Slider(
@@ -107,24 +161,42 @@ layout = html.Div([
                         marks={i: str(i) for i in range(1, 5)},
                         tooltip={"placement": "bottom", "always_visible": True}
                     )
-                ])
-            ], className="card-body")
-        ], className="card shadow-sm mb-4 col-md-6")
-    ], className="row"),
+                ], className="mb-3"),
+
+                # Info note about parameter behavior
+                html.Div([
+                    html.Small([
+                        html.I(className="fas fa-info-circle me-1"),
+                        html.Strong("Note: "),
+                        "Auto modes optimize N automatically (testing N=1-5 for each variable model). ",
+                        "Sliders only apply in Manual mode."
+                    ], className="text-info")
+                ], className="mb-2")
+            ], className="offcanvas-body")
+        ], className="offcanvas offcanvas-end", id="configOffcanvas")
+    ]),
 
     # Results Section
     html.Div([
         html.Div([
-            html.H3([
-                html.I(className="fas fa-chart-area me-2"),
-                "Analysis Results"
-            ], className="card-title text-primary"),
+            html.Div([
+                html.H3([
+                    html.I(className="fas fa-chart-area me-2"),
+                    "Analysis Results"
+                ], className="card-title text-primary mb-0"),
+                html.Div([
+                    html.Button([
+                        html.I(className="fas fa-download me-2"),
+                        "Download CSV"
+                    ], id="download-csv-btn", className="btn btn-success btn-sm", disabled=True),
+                    dcc.Download(id="download-csv")
+                ])
+            ], className="d-flex justify-content-between align-items-center mb-3"),
 
             html.Div(id="results-summary", className="mb-3"),
 
-            dcc.Graph(id="permittivity-plots", style={"height": "700px"}),
-
-            html.Div(id="download-section", className="mt-3")
+            dcc.Graph(id="permittivity-plots", style={"height": "700px"})
         ], className="card-body")
-    ], className="card shadow-sm mb-4", id="results-card")
+    ], className="card shadow-sm mb-4", id="results-card"),
+
 ], className="container", style={"maxWidth": "1200px"})
