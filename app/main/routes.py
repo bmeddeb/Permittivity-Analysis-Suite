@@ -6,7 +6,7 @@ import io
 import hashlib
 from app.main import bp
 from app.main.forms import CSVUploadForm
-from app.models import Trial, MaterialData
+from app.auth.models import Trial, MaterialData
 from app import db
 
 @bp.route('/', methods=['GET', 'POST'])

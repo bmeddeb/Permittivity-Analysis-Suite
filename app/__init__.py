@@ -21,7 +21,7 @@ def create_app():
     login_manager.login_view = 'auth.login'
     login_manager.login_message = 'Please log in to access this page.'
     
-    from app.models import User
+    from app.auth.models import User
     
     @login_manager.user_loader
     def load_user(user_id):

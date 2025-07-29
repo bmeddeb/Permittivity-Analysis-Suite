@@ -11,3 +11,4 @@ def protect_dash_views(dash_app):
         if request.path.startswith(dash_app.config.url_base_pathname):
             if not current_user.is_authenticated:
                 return redirect(url_for('auth.login', next=request.url))
+        return None

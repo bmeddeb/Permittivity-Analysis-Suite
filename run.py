@@ -1,5 +1,5 @@
 from app import create_app, db
-from app.models import User, Trial, MaterialData
+from app.auth.models import User, Trial, MaterialData
 import hashlib
 
 app = create_app()
