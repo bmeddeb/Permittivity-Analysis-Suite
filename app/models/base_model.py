@@ -566,24 +566,23 @@ class BaseModel(lmfit.Model, ABC):
 
         return output
 
-    def plot_fit(self,
-                 result: lmfit.model.ModelResult,
-                 fig=None,
-                 show_residuals: bool = True,
-                 show_components: bool = False) -> Any:
+    def get_plot_data(self,
+                      result: lmfit.model.ModelResult,
+                      n_points: int = 1000) -> Dict[str, Any]:
         """
-        Plot fit results (to be implemented by subclasses for custom plotting).
+        Generate plot data in a library-agnostic format.
+
+        This method should be overridden by subclasses to provide
+        model-specific plotting data.
 
         Args:
             result: ModelResult from fitting
-            fig: Matplotlib figure (if None, creates new figure)
-            show_residuals: Whether to show residuals subplot
-            show_components: Whether to show individual model components
+            n_points: Number of points for smooth curves
 
         Returns:
-            Matplotlib figure
+            Dictionary containing plot data
         """
         raise NotImplementedError(
-            f"plot_fit method not implemented for {self.name}. "
-            "Subclasses should implement this method for custom plotting."
+            f"get_plot_data method not implemented for {self.name}. "
+            "Subclasses should implement this method to provide plotting data."
         )
