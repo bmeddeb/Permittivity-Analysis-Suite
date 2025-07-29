@@ -1,0 +1,11 @@
+Flask>=2.3.0
+Flask-SQLAlchemy>=3.0.0
+Flask-Login>=0.6.0
+Flask-WTF>=1.1.0
+WTForms>=3.0.0
+Flask-Migrate>=4.0.0
+Werkzeug>=2.3.0
+email-validator>=2.0.0
+dash>=3.1.1
+plotly>=5.15.0
+pandas>=2.0.0
