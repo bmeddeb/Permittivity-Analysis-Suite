@@ -6,9 +6,3 @@ Implements a sum of multiple Debye relaxation processes:
 
 This model describes materials with multiple distinct relaxation times.
 """
-
-import numpy as np
-import lmfit
-from typing import Dict, Any, List
-from .base_model import BaseModel
-
