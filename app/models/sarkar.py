@@ -43,8 +43,6 @@ class SarkarModel(BaseModel):
             frequency_range=(1e-3, 100)  # 1 MHz to 100 GHz typical range
         )
         self.use_ghz = use_ghz
-        self.param_names = ['eps_r_inf', 'eps_r_s', 'f1', 'f2', 'sigma_dc']
-        self.n_params = 5
         self.eps0 = 8.854187817e-12
 
     @staticmethod

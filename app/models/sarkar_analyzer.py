@@ -12,7 +12,7 @@ import lmfit
 from typing import Dict, Tuple, List, Any, Optional
 import logging
 
-from .djordjevic_sarkar import SarkarModel
+from .sarkar import SarkarModel
 from .kramers_kronig_validator import KramersKronigValidator
 
 logger = logging.getLogger(__name__)
@@ -177,10 +177,10 @@ class SarkarModelAnalyzer:
                 kk_diagnostics = validator.get_diagnostics()
 
             validation_results = {
-                'causality_status': kk_results['causality_status'],
-                'mean_relative_error': kk_results['mean_relative_error'],
-                'rmse': kk_results['rmse'],
-                'is_causal': kk_results['causality_status'] == 'PASS',
+                'causality_status': kk_results.get('causality_status', 'UNKNOWN'),
+                'mean_relative_error': kk_results.get('mean_relative_error', 0.0),
+                'rmse': kk_results.get('rmse', 0.0),
+                'is_causal': kk_results.get('causality_status', '') == 'PASS',
                 'diagnostics': kk_diagnostics
             }
 
@@ -219,7 +219,18 @@ class SarkarModelAnalyzer:
             Dictionary of quality metrics
         """
         # Get base metrics from the model
-        base_metrics = result.fit_metrics._asdict() if hasattr(result, 'fit_metrics') else {}
+        if hasattr(result, 'fit_metrics'):
+            base_metrics = {
+                'r_squared': result.fit_metrics.r_squared,
+                'rmse': result.fit_metrics.rmse,
+                'mape': result.fit_metrics.mape,
+                'chi_squared': result.fit_metrics.chi_squared,
+                'reduced_chi_squared': result.fit_metrics.reduced_chi_squared,
+                'dk_rmse': result.fit_metrics.dk_rmse,
+                'df_rmse': result.fit_metrics.df_rmse
+            }
+        else:
+            base_metrics = {}
 
         metrics = {
             'r_squared': base_metrics.get('r_squared', 0),
@@ -310,7 +321,7 @@ class SarkarModelAnalyzer:
         comparison = {
             'sarkar_model': {
                 'result': ds_result,
-                'n_params': self.model.n_params,
+                'n_params': ds_result.nvarys,  # Get from result instead of model
                 'aic': ds_result.aic if hasattr(ds_result, 'aic') else self._calculate_aic(ds_result),
                 'bic': ds_result.bic if hasattr(ds_result, 'bic') else self._calculate_bic(ds_result),
                 'quality': ds_quality,
@@ -350,7 +361,7 @@ class SarkarModelAnalyzer:
 
             return {
                 'result': md_result,
-                'n_params': md_model.n_params,
+                'n_params': md_result.nvarys,  # Get from result
                 'aic': md_result.aic if hasattr(md_result, 'aic') else self._calculate_aic(md_result),
                 'bic': md_result.bic if hasattr(md_result, 'bic') else self._calculate_bic(md_result),
                 'rmse': md_result.fit_metrics.rmse if hasattr(md_result, 'fit_metrics') else np.inf,

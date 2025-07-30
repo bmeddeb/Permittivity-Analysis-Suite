@@ -6,3 +6,8 @@ Implements a sum of multiple Debye relaxation processes:
 
 This model describes materials with multiple distinct relaxation times.
 """
+from app.models import BaseModel
+
+
+class MultiPoleDebyeModel(BaseModel):
+    pass

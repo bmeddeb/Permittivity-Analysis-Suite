@@ -11,3 +11,7 @@ import numpy as np
 import lmfit
 from typing import Dict, Any
 from .base_model import BaseModel
+
+
+class ColeDavidsonModel(BaseModel):
+    pass

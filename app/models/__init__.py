@@ -13,6 +13,7 @@ from .cole_davidson import ColeDavidsonModel
 from .havriliak_negami import HavriliakNegamiModel
 from .lorentz import LorentzOscillatorModel
 from .sarkar import SarkarModel
+from .sarkar_analyzer import SarkarModelAnalyzer
 from .hybrid_debye_lorentz import HybridDebyeLorentzModel
 from .kramers_kronig_validator import KramersKronigValidator
 
@@ -26,5 +27,6 @@ __all__ = [
     'LorentzOscillatorModel',
     'SarkarModel',
     'HybridDebyeLorentzModel',
-    'KramersKronigValidator'
+    'KramersKronigValidator',
+    'SarkarModelAnalyzer'
 ]

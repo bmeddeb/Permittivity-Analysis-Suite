@@ -1,4 +1,4 @@
-# app/utils/sarkar_export_utils.py
+# app/models/sarkar_export_utils.py
 """
 Export utilities for the Djordjevic-Sarkar model.
 
@@ -11,7 +11,7 @@ import lmfit
 from typing import Dict, Any, Optional, Tuple, List
 import logging
 
-from app.models.sarkar import SarkarModel
+from app.models import SarkarModel
 
 logger = logging.getLogger(__name__)
 

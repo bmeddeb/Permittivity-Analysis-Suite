@@ -1,4 +1,4 @@
-# models/base_model.py
+# app/models/base_model.py
 """
 Base class for dielectric models providing a standardized interface
 for fitting complex permittivity data using lmfit.
@@ -12,7 +12,6 @@ import warnings
 from dataclasses import dataclass
 import logging
 
-# Setup logging
 logger = logging.getLogger(__name__)
 
 
@@ -20,7 +19,7 @@ logger = logging.getLogger(__name__)
 class FitQualityMetrics:
     """Container for fit quality metrics."""
     rmse: float
-    mape: float  # Mean Absolute Percentage Error
+    mape: float
     r_squared: float
     chi_squared: float
     reduced_chi_squared: float
@@ -36,12 +35,6 @@ class BaseModel(lmfit.Model, ABC):
     This class provides a standardized interface for creating and fitting
     dielectric models to experimental data. It handles complex permittivity
     data and provides comprehensive fit quality metrics.
-
-    Attributes:
-        name (str): Model name for identification
-        n_params (int): Number of model parameters
-        param_names (List[str]): Names of model parameters
-        frequency_range (Tuple[float, float]): Valid frequency range for the model
     """
 
     def __init__(self,
@@ -56,18 +49,14 @@ class BaseModel(lmfit.Model, ABC):
             frequency_range: Optional (min, max) frequency range in GHz
             **kwargs: Additional arguments passed to lmfit.Model
         """
-        # Set model name
+        # Set model metadata
         self.name = name or self.__class__.__name__
-
-        # Set frequency range (can be overridden by subclasses)
-        self.frequency_range = frequency_range or (1e-3, 1e3)  # 1 MHz to 1 THz
-
-        # Initialize parameter info (to be set by subclasses)
-        self.param_names: List[str] = []
-        self.n_params: int = 0
+        self.frequency_range = frequency_range or (1e-3, 1e3)
 
         # Initialize lmfit Model with our model function
-        super().__init__(self._complex_model_func, independent_vars=['freq'], **kwargs)
+        # We pass the static model_func directly
+        super().__init__(self.model_func, independent_vars=['freq'],
+                         name=name or self.__class__.__name__, **kwargs)
 
         # Storage for fit quality metrics
         self._last_fit_metrics: Optional[FitQualityMetrics] = None
@@ -77,32 +66,13 @@ class BaseModel(lmfit.Model, ABC):
 
         logger.info(f"Initialized {self.name} model")
 
-    def _complex_model_func(self, freq: np.ndarray, **params) -> np.ndarray:
-        """
-        Wrapper to ensure model returns complex values.
-
-        Args:
-            freq: Frequency array in GHz
-            **params: Model parameters
-
-        Returns:
-            Complex permittivity array
-        """
-        result = self.model_func(freq, **params)
-
-        # Ensure result is complex
-        if not np.iscomplexobj(result):
-            raise ValueError(f"{self.name} model_func must return complex values")
-
-        return result
-
     @staticmethod
     @abstractmethod
     def model_func(freq: np.ndarray, **params) -> np.ndarray:
         """
         Mathematical function describing the dielectric model.
 
-        This must be implemented by all subclasses.
+        This must be implemented by all subclasses as a static method.
 
         Args:
             freq: Frequency array in GHz
@@ -218,66 +188,14 @@ class BaseModel(lmfit.Model, ABC):
 
                 return unique_freq, unique_dk, unique_df
 
-        # Default: return as-is
         return freq, dk_exp, df_exp
-
-    def calculate_weights(self,
-                          freq: np.ndarray,
-                          dk_exp: np.ndarray,
-                          df_exp: np.ndarray,
-                          method: str = 'uniform') -> np.ndarray:
-        """
-        Calculate weights for weighted fitting.
-
-        Args:
-            freq: Frequency array in GHz
-            dk_exp: Experimental real permittivity
-            df_exp: Experimental loss factor
-            method: Weighting method ('uniform', 'relative', 'frequency', 'combined')
-
-        Returns:
-            Weight array for combined [dk, df] data
-
-        Raises:
-            ValueError: If unknown weighting method is specified
-        """
-        n_points = len(freq)
-
-        if method == 'uniform':
-            # Equal weights for all points
-            weights = np.ones(2 * n_points)
-
-        elif method == 'relative':
-            # Weight by inverse of value (relative error weighting)
-            dk_weights = 1.0 / np.maximum(dk_exp, 0.1)  # Avoid division by zero
-            df_weights = 1.0 / np.maximum(df_exp, 0.001)
-            weights = np.hstack([dk_weights, df_weights])
-
-        elif method == 'frequency':
-            # Weight by frequency (emphasize high frequencies)
-            freq_weights = freq / np.max(freq)
-            weights = np.hstack([freq_weights, freq_weights])
-
-        elif method == 'combined':
-            # Combine relative and frequency weighting
-            dk_weights = (1.0 / np.maximum(dk_exp, 0.1)) * (freq / np.max(freq))
-            df_weights = (1.0 / np.maximum(df_exp, 0.001)) * (freq / np.max(freq))
-            weights = np.hstack([dk_weights, df_weights])
-
-        else:
-            raise ValueError(f"Unknown weighting method: {method}")
-
-        # Normalize weights by sum for numerical stability
-        weights = weights / np.sum(weights) * len(weights)
-
-        return weights
 
     def fit(self,
             freq: np.ndarray,
             dk_exp: np.ndarray,
             df_exp: np.ndarray,
             params: Optional[lmfit.Parameters] = None,
-            weights: Optional[Union[str, np.ndarray]] = 'uniform',
+            weights: Optional[Union[str, np.ndarray]] = None,
             method: str = 'leastsq',
             **kwargs) -> lmfit.model.ModelResult:
         """
@@ -288,16 +206,12 @@ class BaseModel(lmfit.Model, ABC):
             dk_exp: Experimental real permittivity
             df_exp: Experimental loss factor
             params: Initial parameters (if None, will be created automatically)
-            weights: Weighting method or array ('uniform', 'relative', 'frequency', 'combined', or array)
+            weights: Weighting method or array
             method: Optimization method (default: 'leastsq')
             **kwargs: Additional arguments for the minimizer
 
         Returns:
             lmfit ModelResult object with fit results
-
-        Raises:
-            ValueError: If input data is invalid or weights array has incorrect size
-            TypeError: If weights is not string, array, or None
         """
         # Validate input data
         self.validate_data(freq, dk_exp, df_exp)
@@ -309,93 +223,71 @@ class BaseModel(lmfit.Model, ABC):
         if params is None:
             params = self.create_parameters(freq, dk_exp, df_exp)
 
-        # Set parameter names for reference
-        self.param_names = list(params.keys())
-        self.n_params = len(self.param_names)
+        # Convert to complex data
+        eps_exp = dk_exp + 1j * (dk_exp * df_exp)
 
-        # Calculate weights
+        # Calculate weights if string method provided
         if isinstance(weights, str):
-            weights = self.calculate_weights(freq, dk_exp, df_exp, method=weights)
-        elif isinstance(weights, np.ndarray):
-            # Validate weight array size
-            if len(weights) == len(freq):
-                # If weights provided for single array, duplicate for complex fitting
-                weights = np.hstack([weights, weights])
-            elif len(weights) == 2 * len(freq):
-                # Weights already in correct format
-                pass
-            else:
-                raise ValueError(
-                    f"Weights array length must match frequency array length ({len(freq)}) "
-                    f"or combined real/imag length ({2 * len(freq)}). Got {len(weights)}."
-                )
-        elif weights is not None:
-            raise TypeError(f"Weights must be string, numpy array, or None. Got {type(weights)}.")
+            weights = self._calculate_weights(freq, dk_exp, df_exp, method=weights)
 
-        # Stack real and imaginary parts for fitting
-        combined_data = np.hstack([dk_exp, df_exp])
+        # Use lmfit's built-in complex fitting
+        result = super().fit(eps_exp, params, freq=freq, weights=weights,
+                             method=method, **kwargs)
 
-        # Define residual function for complex fitting
-        def complex_residual(params, freq, data, weights=None):
-            """Calculate weighted residuals for complex data."""
-            n = len(freq)
+        # Store additional data for analysis
+        result.freq = freq
+        result.dk_exp = dk_exp
+        result.df_exp = df_exp
 
-            # Pre-allocate residuals array for efficiency
-            residuals = np.empty(2 * n)
-
-            # Evaluate model
-            model_complex = self._complex_model_func(freq, **params)
-
-            # Calculate residuals efficiently
-            residuals[:n] = model_complex.real - data[:n]  # Dk residuals
-            residuals[n:] = model_complex.imag - data[n:]  # Df residuals
-
-            # Apply weights if provided
-            if weights is not None:
-                residuals *= np.sqrt(weights)
-
-            return residuals
-
-        # Create minimizer
-        minimizer = lmfit.Minimizer(
-            complex_residual,
-            params,
-            fcn_args=(freq, combined_data, weights)
-        )
-
-        # Perform fit
-        result = minimizer.minimize(method=method, **kwargs)
-
-        # Create ModelResult for consistency with lmfit
-        model_result = lmfit.model.ModelResult(self, params)
-        model_result.params = result.params
-        model_result.success = result.success
-        model_result.chisqr = result.chisqr
-        model_result.redchi = result.redchi
-        model_result.nfree = result.nfree
-        model_result.ndata = len(combined_data)
-        model_result.nvarys = result.nvarys
-        model_result.message = result.message
-
-        # Store additional info
-        model_result.data = combined_data
-        model_result.weights = weights
-        model_result.freq = freq
-        model_result.dk_exp = dk_exp
-        model_result.df_exp = df_exp
+        # Calculate fitted dk and df
+        eps_fit = result.best_fit
+        result.dk_fit = eps_fit.real
+        result.df_fit = np.divide(eps_fit.imag, eps_fit.real,
+                                  out=np.zeros_like(eps_fit.real),
+                                  where=eps_fit.real != 0)
 
         # Calculate fit quality metrics
-        self._calculate_fit_metrics(model_result)
-
-        # Add best fit values
-        best_fit_complex = self._complex_model_func(freq, **result.params)
-        model_result.best_fit = np.hstack([best_fit_complex.real, best_fit_complex.imag])
-        model_result.dk_fit = best_fit_complex.real
-        model_result.df_fit = best_fit_complex.imag
+        self._calculate_fit_metrics(result)
 
         logger.info(f"Fit completed. Success: {result.success}, χ²_red: {result.redchi:.4f}")
 
-        return model_result
+        return result
+
+    def _calculate_weights(self,
+                           freq: np.ndarray,
+                           dk_exp: np.ndarray,
+                           df_exp: np.ndarray,
+                           method: str = 'uniform') -> np.ndarray:
+        """
+        Calculate weights for weighted fitting.
+
+        Args:
+            freq: Frequency array in GHz
+            dk_exp: Experimental real permittivity
+            df_exp: Experimental loss factor
+            method: Weighting method
+
+        Returns:
+            Weight array for complex data
+        """
+        n_points = len(freq)
+
+        if method == 'uniform':
+            weights = np.ones(n_points)
+        elif method == 'relative':
+            # Weight by inverse of magnitude
+            eps_mag = np.sqrt(dk_exp ** 2 + (dk_exp * df_exp) ** 2)
+            weights = 1.0 / np.maximum(eps_mag, 0.1)
+        elif method == 'frequency':
+            # Weight by frequency
+            weights = freq / np.max(freq)
+        else:
+            raise ValueError(f"Unknown weighting method: {method}")
+
+        # Normalize weights
+        weights = weights / np.mean(weights)
+
+        return weights
 
     def _calculate_fit_metrics(self, result: lmfit.model.ModelResult) -> None:
         """
@@ -404,37 +296,34 @@ class BaseModel(lmfit.Model, ABC):
         Args:
             result: ModelResult from fitting
         """
-        # Get fitted values
-        fitted_complex = self._complex_model_func(result.freq, **result.params)
-        dk_fit = fitted_complex.real
-        df_fit = fitted_complex.imag
-
-        # Calculate individual RMSE
-        dk_rmse = np.sqrt(np.mean((dk_fit - result.dk_exp) ** 2))
-        df_rmse = np.sqrt(np.mean((df_fit - result.df_exp) ** 2))
+        # Calculate RMSE for dk and df separately
+        dk_rmse = np.sqrt(np.mean((result.dk_fit - result.dk_exp) ** 2))
+        df_rmse = np.sqrt(np.mean((result.df_fit - result.df_exp) ** 2))
 
         # Combined RMSE
         rmse = np.sqrt((dk_rmse ** 2 + df_rmse ** 2) / 2)
 
-        # Mean Absolute Percentage Error with robust zero handling
-        dk_mape = np.mean(np.abs(dk_fit - result.dk_exp) / (np.abs(result.dk_exp) + 1e-10)) * 100
-        df_mape = np.mean(np.abs(df_fit - result.df_exp) / (np.abs(result.df_exp) + 1e-10)) * 100
+        # Mean Absolute Percentage Error
+        dk_mape = np.mean(np.abs(result.dk_fit - result.dk_exp) /
+                          (np.abs(result.dk_exp) + 1e-10)) * 100
+        df_mape = np.mean(np.abs(result.df_fit - result.df_exp) /
+                          (np.abs(result.df_exp) + 1e-10)) * 100
         mape = (dk_mape + df_mape) / 2
 
-        # R-squared with numerical stability
-        dk_ss_res = np.sum((result.dk_exp - dk_fit) ** 2)
+        # R-squared
+        dk_ss_res = np.sum((result.dk_exp - result.dk_fit) ** 2)
         dk_ss_tot = np.sum((result.dk_exp - np.mean(result.dk_exp)) ** 2)
         dk_r2 = 1 - dk_ss_res / (dk_ss_tot + 1e-10) if dk_ss_tot > 1e-10 else 0.0
 
-        df_ss_res = np.sum((result.df_exp - df_fit) ** 2)
+        df_ss_res = np.sum((result.df_exp - result.df_fit) ** 2)
         df_ss_tot = np.sum((result.df_exp - np.mean(result.df_exp)) ** 2)
         df_r2 = 1 - df_ss_res / (df_ss_tot + 1e-10) if df_ss_tot > 1e-10 else 0.0
 
         r_squared = (dk_r2 + df_r2) / 2
 
         # Maximum error
-        dk_max_error = np.max(np.abs(dk_fit - result.dk_exp))
-        df_max_error = np.max(np.abs(df_fit - result.df_exp))
+        dk_max_error = np.max(np.abs(result.dk_fit - result.dk_exp))
+        df_max_error = np.max(np.abs(result.df_fit - result.df_exp))
         max_error = max(dk_max_error, df_max_error)
 
         # Store metrics
@@ -485,12 +374,12 @@ class BaseModel(lmfit.Model, ABC):
 
         # Parameters
         report += "Fitted Parameters:\n"
-        for param_name in self.param_names:
-            param = result.params[param_name]
-            report += f"  {param_name}: {param.value:.6g}"
-            if param.stderr is not None:
-                report += f" ± {param.stderr:.6g}"
-            report += "\n"
+        for name, param in result.params.items():
+            if param.vary:
+                report += f"  {name}: {param.value:.6g}"
+                if param.stderr is not None:
+                    report += f" ± {param.stderr:.6g}"
+                report += "\n"
 
         # Data info
         report += f"\nData Info:\n"
@@ -522,7 +411,8 @@ class BaseModel(lmfit.Model, ABC):
                 param_obj.add(name, value=value)
             params = param_obj
 
-        return self._complex_model_func(freq, **params)
+        # Use lmfit's eval method
+        return self.eval(params, freq=freq)
 
     def to_dict(self, result: lmfit.model.ModelResult) -> Dict[str, Any]:
         """
@@ -537,11 +427,11 @@ class BaseModel(lmfit.Model, ABC):
         # Extract parameter values and uncertainties
         params_dict = {}
         params_stderr = {}
-        for name in self.param_names:
-            param = result.params[name]
-            params_dict[name] = param.value
-            if param.stderr is not None:
-                params_stderr[f"{name}_stderr"] = param.stderr
+        for name, param in result.params.items():
+            if param.vary:
+                params_dict[name] = param.value
+                if param.stderr is not None:
+                    params_stderr[f"{name}_stderr"] = param.stderr
 
         # Prepare output dictionary
         output = {
@@ -560,29 +450,8 @@ class BaseModel(lmfit.Model, ABC):
             },
             'freq_range': [float(result.freq.min()), float(result.freq.max())],
             'n_points': len(result.freq),
-            'n_params': self.n_params,
-            'message': result.message
+            'n_params': result.nvarys,
+            'message': result.message if hasattr(result, 'message') else ''
         }
 
         return output
-
-    def get_plot_data(self,
-                      result: lmfit.model.ModelResult,
-                      n_points: int = 1000) -> Dict[str, Any]:
-        """
-        Generate plot data in a library-agnostic format.
-
-        This method should be overridden by subclasses to provide
-        model-specific plotting data.
-
-        Args:
-            result: ModelResult from fitting
-            n_points: Number of points for smooth curves
-
-        Returns:
-            Dictionary containing plot data
-        """
-        raise NotImplementedError(
-            f"get_plot_data method not implemented for {self.name}. "
-            "Subclasses should implement this method to provide plotting data."
-        )
