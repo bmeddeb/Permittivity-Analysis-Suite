@@ -1,11 +1,12 @@
 from __future__ import annotations
-from lmfit.models import ComplexModel
+
+from lmfit.model import Model
 
 from ._eval_funcs import hybrid_debye_lorentz_eval
 from ._mixins import ScaledResidualMixin
 
 
-class HybridDebyeLorentzModel(ScaledResidualMixin, ComplexModel):
+class HybridDebyeLorentzModel(ScaledResidualMixin, Model):
     """Hybrid model combining Debye and Lorentz mechanisms."""
 
     def __init__(self, n_terms: int, prefix: str = "", **kws):

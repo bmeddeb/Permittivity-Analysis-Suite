@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 import numpy.typing as npt
-from lmfit.models import ComplexModel
+from lmfit.model import Model
 
 from ._eval_funcs import dsarkar_eval
 from ._mixins import ScaledResidualMixin
@@ -9,8 +10,8 @@ FloatArray = npt.NDArray
 ComplexArray = npt.NDArray
 
 
-class DSarkarModel(ScaledResidualMixin, ComplexModel):
-    """ComplexModel implementation of the Djordjevic–Sarkar dispersion."""
+class DSarkarModel(ScaledResidualMixin, Model):
+    """Model implementation of the Djordjevic–Sarkar dispersion."""
 
     def __init__(self, prefix: str = "", **kws):
         super().__init__(dsarkar_eval, independent_vars=["f_ghz"], prefix=prefix, **kws)

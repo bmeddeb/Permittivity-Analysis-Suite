@@ -1,11 +1,12 @@
 from __future__ import annotations
-from lmfit.models import ComplexModel
+
+from lmfit.model import Model
 
 from ._eval_funcs import multi_pole_debye_eval
 from ._mixins import ScaledResidualMixin
 
 
-class MultiPoleDebyeModel(ScaledResidualMixin, ComplexModel):
+class MultiPoleDebyeModel(ScaledResidualMixin, Model):
     """Debye model with a configurable number of relaxation poles."""
 
     def __init__(self, n_poles: int, prefix: str = "", **kws):

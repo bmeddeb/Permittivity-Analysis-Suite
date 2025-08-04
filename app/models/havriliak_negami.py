@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import numpy as np
 import numpy.typing as npt
-from lmfit.models import ComplexModel
+from lmfit.model import Model
 
 from ._eval_funcs import hn_eval
 from ._mixins import ScaledResidualMixin
@@ -10,8 +11,8 @@ FloatArray = npt.NDArray[np.float64]
 ComplexArray = npt.NDArray[np.complex128]
 
 
-class HavriliakNegamiModel(ScaledResidualMixin, ComplexModel):
-    """lmfit ComplexModel wrapper for the Havriliak–Negami dispersion."""
+class HavriliakNegamiModel(ScaledResidualMixin, Model):
+    """lmfit Model wrapper for the Havriliak–Negami dispersion."""
 
     def __init__(self, prefix: str = "", **kws):
         super().__init__(hn_eval, independent_vars=["f_ghz"], prefix=prefix, **kws)
