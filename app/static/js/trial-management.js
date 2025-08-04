@@ -90,16 +90,16 @@ function initializeTrialManagement() {
             });
             
             // Show/hide top buttons
-            editButton.style.display = 'none';
-            saveButton.style.display = 'inline-block';
-            cancelButton.style.display = 'inline-block';
-            if (addRowButton) addRowButton.style.display = 'inline-block';
+            editButton.classList.add('hidden');
+            saveButton.classList.remove('hidden');
+            cancelButton.classList.remove('hidden');
+            if (addRowButton) addRowButton.classList.remove('hidden');
             
             // Show/hide bottom buttons
             if (bottomControls) bottomControls.style.display = 'flex';
-            if (saveButtonBottom) saveButtonBottom.style.display = 'inline-block';
-            if (cancelButtonBottom) cancelButtonBottom.style.display = 'inline-block';
-            if (addRowButtonBottom) addRowButtonBottom.style.display = 'inline-block';
+            if (saveButtonBottom) saveButtonBottom.classList.remove('hidden');
+            if (cancelButtonBottom) cancelButtonBottom.classList.remove('hidden');
+            if (addRowButtonBottom) addRowButtonBottom.classList.remove('hidden');
             
         } else {
             // Restore original values and disable editing
@@ -118,16 +118,16 @@ function initializeTrialManagement() {
             });
             
             // Show/hide top buttons
-            editButton.style.display = 'inline-block';
-            saveButton.style.display = 'none';
-            cancelButton.style.display = 'none';
-            if (addRowButton) addRowButton.style.display = 'none';
+            editButton.classList.remove('hidden');
+            saveButton.classList.add('hidden');
+            cancelButton.classList.add('hidden');
+            if (addRowButton) addRowButton.classList.add('hidden');
             
             // Show/hide bottom buttons
             if (bottomControls) bottomControls.style.display = 'none';
-            if (saveButtonBottom) saveButtonBottom.style.display = 'none';
-            if (cancelButtonBottom) cancelButtonBottom.style.display = 'none';
-            if (addRowButtonBottom) addRowButtonBottom.style.display = 'none';
+            if (saveButtonBottom) saveButtonBottom.classList.add('hidden');
+            if (cancelButtonBottom) cancelButtonBottom.classList.add('hidden');
+            if (addRowButtonBottom) addRowButtonBottom.classList.add('hidden');
             
             // Remove any unsaved new rows
             const newRows = dataTable.querySelectorAll('tbody tr[data-is-new="true"]');
@@ -148,7 +148,7 @@ function initializeTrialManagement() {
             input.type = 'number';
             input.step = i === 2 ? '0.000001' : '0.001'; // More precision for df
             input.value = value;
-            input.className = 'form-control form-control-sm';
+            input.className = 'w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500';
             input.style.minWidth = '100px';
             
             // Add validation
@@ -187,8 +187,8 @@ function initializeTrialManagement() {
         }
         
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'btn btn-sm btn-outline-danger delete-row-btn';
-        deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+        deleteBtn.className = 'text-red-500 hover:text-red-700 p-1 rounded transition-colors';
+        deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
         deleteBtn.title = 'Delete this data point';
         deleteBtn.addEventListener('click', () => deleteDataPoint(row));
         
@@ -524,8 +524,8 @@ function addNewRow() {
     
     // Add delete button
     const deleteBtn = document.createElement('button');
-    deleteBtn.className = 'btn btn-sm btn-outline-danger delete-row-btn';
-    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+    deleteBtn.className = 'text-red-500 hover:text-red-700 p-1 rounded transition-colors';
+    deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>';
     deleteBtn.title = 'Delete this data point';
     deleteBtn.addEventListener('click', () => {
         newRow.remove();
@@ -556,7 +556,7 @@ function createInputField(type, value, step) {
     input.type = type;
     input.step = step;
     input.value = value;
-    input.className = 'form-control form-control-sm';
+    input.className = 'w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-blue-500 focus:border-blue-500';
     input.style.minWidth = '100px';
     return input;
 }
@@ -565,12 +565,12 @@ function validateInput(event) {
     const input = event.target;
     const value = parseFloat(input.value);
     
-    input.classList.remove('is-invalid', 'is-valid');
+    input.classList.remove('border-red-500', 'bg-red-50', 'border-green-500', 'bg-green-50');
     
     if (isNaN(value) || value < 0) {
-        input.classList.add('is-invalid');
+        input.classList.add('border-red-500', 'bg-red-50');
     } else if (value > 0) {
-        input.classList.add('is-valid');
+        input.classList.add('border-green-500', 'bg-green-50');
     }
 }
 

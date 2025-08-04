@@ -156,7 +156,7 @@ function showFileInfo(file, fileInfo, fileName, submitBtn, dropZone) {
     }
     
     if (fileInfo) {
-        fileInfo.classList.remove('d-none');
+        fileInfo.classList.remove('hidden');
         fileInfo.classList.add('fade-in');
     }
     
@@ -176,7 +176,7 @@ function removeFile(fileInput, fileInfo, dropZone, submitBtn) {
     }
     
     if (fileInfo) {
-        fileInfo.classList.add('d-none');
+        fileInfo.classList.add('hidden');
         fileInfo.classList.remove('fade-in');
     }
     
@@ -193,14 +193,24 @@ function removeFile(fileInput, fileInfo, dropZone, submitBtn) {
 function showAlert(message, type = 'info') {
     // Create alert element
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+    const bgColor = type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+                   type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+                   'bg-blue-100 border-blue-400 text-blue-700';
+    
+    alertDiv.className = `mb-4 p-4 ${bgColor} rounded-lg border`;
     alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="flex justify-between items-center">
+            <span>${message}</span>
+            <button type="button" class="text-current hover:opacity-75" onclick="this.parentElement.parentElement.remove()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
     `;
     
     // Find container to insert alert
-    const container = document.querySelector('.container');
+    const container = document.querySelector('main .container, .container');
     if (container) {
         container.insertBefore(alertDiv, container.firstChild);
         

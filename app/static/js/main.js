@@ -19,12 +19,13 @@ PermittivityApp.init = function() {
 };
 
 /**
- * Initialize Bootstrap tooltips
+ * Initialize tooltips (now using custom implementation since no Bootstrap)
  */
 PermittivityApp.initializeTooltips = function() {
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+    // Custom tooltip implementation for Tailwind
+    const tooltipTriggerList = document.querySelectorAll('[title]');
+    tooltipTriggerList.forEach(function(el) {
+        // Basic tooltip functionality can be added here if needed
     });
 };
 
@@ -32,17 +33,14 @@ PermittivityApp.initializeTooltips = function() {
  * Auto-dismiss alerts after a delay
  */
 PermittivityApp.initializeAlerts = function() {
-    const alerts = document.querySelectorAll('.alert:not(.alert-permanent)');
+    const alerts = document.querySelectorAll('.alert-auto-dismiss');
     alerts.forEach(function(alert) {
-        // Auto-dismiss success and info alerts after 5 seconds
-        if (alert.classList.contains('alert-success') || alert.classList.contains('alert-info')) {
-            setTimeout(function() {
-                const bsAlert = new bootstrap.Alert(alert);
-                if (alert.parentNode) {
-                    bsAlert.close();
-                }
-            }, 5000);
-        }
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 5000);
     });
 };
 
@@ -50,7 +48,7 @@ PermittivityApp.initializeAlerts = function() {
  * Add fade-in animations to cards and content
  */
 PermittivityApp.initializeAnimations = function() {
-    const cards = document.querySelectorAll('.card');
+    const cards = document.querySelectorAll('.bg-white');
     cards.forEach(function(card, index) {
         setTimeout(function() {
             card.classList.add('fade-in');
@@ -98,14 +96,24 @@ PermittivityApp.setupGlobalEventListeners = function() {
  */
 PermittivityApp.showAlert = function(message, type = 'info', duration = 5000) {
     const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    const bgColor = type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 
+                   type === 'success' ? 'bg-green-100 border-green-400 text-green-700' :
+                   'bg-blue-100 border-blue-400 text-blue-700';
+    
+    alertDiv.className = `mb-4 p-4 ${bgColor} rounded-lg border`;
     alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="flex justify-between items-center">
+            <span>${message}</span>
+            <button type="button" class="text-current hover:opacity-75" onclick="this.parentElement.parentElement.remove()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
     `;
     
     // Insert at the top of the main content area
-    const container = document.querySelector('.container');
+    const container = document.querySelector('main .container, .container');
     if (container) {
         container.insertBefore(alertDiv, container.firstChild);
         
@@ -113,8 +121,7 @@ PermittivityApp.showAlert = function(message, type = 'info', duration = 5000) {
         if (duration > 0) {
             setTimeout(() => {
                 if (alertDiv.parentNode) {
-                    const bsAlert = new bootstrap.Alert(alertDiv);
-                    bsAlert.close();
+                    alertDiv.remove();
                 }
             }, duration);
         }
