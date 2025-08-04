@@ -20,4 +20,4 @@ class MultiPoleDebyeModel(ScaledResidualMixin, Model):
         self.set_param_hint("eps_inf", min=1.0)
         for i in range(n_poles):
             self.set_param_hint(f"delta_eps_{i}", min=0.0)
-            self.set_param_hint(f"log_tau_{i}", min=-15, max=5)
+            self.set_param_hint(f"tau_{i}", min=1e-15)

@@ -19,7 +19,7 @@ def hn_eval(
     """Havriliak–Negami permittivity in SI units internally."""
     omega = _GHZ_TO_RAD_S * f_ghz
     jw_tau = 1j * omega * tau
-    return eps_inf + delta_eps / (1 + jw_tau ** alpha) ** beta
+    return eps_inf + delta_eps / (1 + jw_tau**alpha) ** beta
 
 
 def dsarkar_eval(
@@ -81,8 +81,6 @@ def hybrid_debye_lorentz_eval(
         q = params.get(f"q{j}", 0.0)
         gamma = q * omega0
         debye = delta_D / (1 + (1j * omega * tau_D) ** alpha)
-        lorentz = delta_L * omega0**2 / (
-            omega0**2 - omega**2 - 1j * 2 * gamma * omega
-        )
+        lorentz = delta_L * omega0**2 / (omega0**2 - omega**2 - 1j * 2 * gamma * omega)
         eps += debye + lorentz
     return eps

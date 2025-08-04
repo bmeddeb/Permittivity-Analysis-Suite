@@ -22,10 +22,13 @@ class HavriliakNegamiModel(ScaledResidualMixin, Model):
         self.set_param_hint("alpha", value=0.8, min=0.0, max=1.0)
         self.set_param_hint("beta", value=0.8, min=0.0, max=1.0)
 
-    def guess(
-        self, data: ComplexArray, f_ghz: FloatArray, **overrides: float
-    ):
-        peak_idx = np.argmax(np.imag(data))
+    def guess(self, data: ComplexArray, f_ghz: FloatArray, **overrides: float):
+        # Handle edge case where imaginary part is flat
+        imag_data = np.imag(data)
+        if np.allclose(imag_data, imag_data[0]):
+            peak_idx = len(f_ghz) // 2
+        else:
+            peak_idx = np.argmax(imag_data)
         tau_guess = 1 / (2 * np.pi * f_ghz[peak_idx] * 1e9)
         params = self.make_params(
             eps_inf=np.real(data[-1]),
@@ -34,5 +37,8 @@ class HavriliakNegamiModel(ScaledResidualMixin, Model):
             alpha=0.8,
             beta=0.8,
         )
-        params.update(overrides)
+        # Apply overrides to parameter values
+        for key, value in overrides.items():
+            if key in params:
+                params[key].set(value=value)
         return params

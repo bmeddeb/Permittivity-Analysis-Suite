@@ -30,7 +30,10 @@ class DSarkarModel(ScaledResidualMixin, Model):
             omega1=omega_peak,
             omega2=omega_peak * 10,
         )
-        params.update(overrides)
+        # Apply overrides to parameter values
+        for key, value in overrides.items():
+            if key in params:
+                params[key].set(value=value)
         return params
 
 
@@ -38,6 +41,11 @@ def _guess_peak(f_ghz: FloatArray, data: ComplexArray) -> float:
     """Estimate omega1 based on maximum loss point."""
     import numpy as np
 
-    idx = int(np.argmax(np.imag(data)))
+    # Handle edge case where imaginary part is flat
+    imag_data = np.imag(data)
+    if np.allclose(imag_data, imag_data[0]):
+        idx = len(f_ghz) // 2
+    else:
+        idx = int(np.argmax(imag_data))
     f_hz = f_ghz[idx] * 1e9
     return 2 * np.pi * f_hz

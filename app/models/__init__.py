@@ -9,5 +9,5 @@ __all__ = [
     "DSarkarModel",
     "HybridDebyeLorentzModel",
     "MultiPoleDebyeModel",
-    "KramersKronigValidator"
+    "KramersKronigValidator",
 ]
