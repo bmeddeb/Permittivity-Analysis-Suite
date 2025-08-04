@@ -182,8 +182,40 @@ def process_csv_upload(form):
 @bp.route('/dashboard')
 @login_required
 def dashboard():
-    # Redirect to the Dash app endpoint
-    return redirect('/dashboard/')
+    """Main dashboard selection page."""
+    return render_template('dashboard_selection.html')
+
+@bp.route('/dashboard/gridstack')
+@login_required
+def dashboard_gridstack():
+    """GridStack.js dashboard proof of concept."""
+    trials = Trial.query.filter_by(user_id=current_user.id).order_by(Trial.upload_timestamp.desc()).all()
+    # Convert trials to JSON-serializable format
+    trials_data = []
+    for trial in trials:
+        trials_data.append({
+            'id': trial.id,
+            'filename': trial.filename,
+            'upload_timestamp': trial.upload_timestamp.isoformat(),
+            'data_count': trial.material_data.count()
+        })
+    return render_template('dashboard_gridstack.html', trials=trials_data)
+
+@bp.route('/dashboard/golden-layout')
+@login_required
+def dashboard_golden_layout():
+    """Golden Layout dashboard proof of concept."""
+    trials = Trial.query.filter_by(user_id=current_user.id).order_by(Trial.upload_timestamp.desc()).all()
+    # Convert trials to JSON-serializable format
+    trials_data = []
+    for trial in trials:
+        trials_data.append({
+            'id': trial.id,
+            'filename': trial.filename,
+            'upload_timestamp': trial.upload_timestamp.isoformat(),
+            'data_count': trial.material_data.count()
+        })
+    return render_template('dashboard_golden_layout.html', trials=trials_data)
 
 @bp.route('/trial/<int:trial_id>')
 @login_required

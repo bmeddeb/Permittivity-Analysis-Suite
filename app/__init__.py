@@ -33,10 +33,6 @@ def create_app():
     from app.main import bp as main_bp
     app.register_blueprint(main_bp)
     
-    # Initialize Dash app
-    from app.dashboard import create_dash_app
-    from app.auth_middleware import protect_dash_views
-    dash_app = create_dash_app(app)
-    protect_dash_views(dash_app)
+    # Dashboard routes are now handled by main blueprint
     
     return app

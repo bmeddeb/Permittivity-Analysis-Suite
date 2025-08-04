@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- GridStack CSS -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack.min.css" rel="stylesheet"/>
+<link href="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack-extra.min.css" rel="stylesheet"/>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">GridStack Dashboard</h1>
+        <div>
+            <button class="btn btn-sm btn-success" onclick="addNewWidget()">
+                <i class="bi bi-plus-circle"></i> Add Widget
+            </button>
+            <button class="btn btn-sm btn-primary" onclick="saveLayout()">
+                <i class="bi bi-save"></i> Save Layout
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="loadLayout()">
+                <i class="bi bi-arrow-clockwise"></i> Load Layout
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+    
+    <!-- Grid Stack Container -->
+    <div class="grid-stack"></div>
+</div>
+
+<!-- Widget Templates -->
+<template id="widget-template">
+    <div class="grid-stack-item" gs-w="4" gs-h="4">
+        <div class="grid-stack-item-content">
+            <div class="widget-header">
+                <span class="widget-title">Widget</span>
+                <div class="widget-controls">
+                    <button class="btn btn-sm" onclick="minimizeWidget(this)" title="Minimize">
+                        <i class="bi bi-dash"></i>
+                    </button>
+                    <button class="btn btn-sm" onclick="maximizeWidget(this)" title="Maximize">
+                        <i class="bi bi-square"></i>
+                    </button>
+                    <button class="btn btn-sm text-danger" onclick="removeWidget(this)" title="Remove">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="widget-body">
+                <div class="widget-content"></div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<!-- GridStack JS -->
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.0.1/dist/gridstack-all.js"></script>
+<!-- Plotly JS -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+.grid-stack {
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 200px);
+}
+
+.grid-stack-item-content {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.widget-header {
+    background-color: #f8f9fa;
+    padding: 10px 15px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: move;
+}
+
+.widget-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.widget-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.widget-controls .btn {
+    padding: 2px 8px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.widget-body {
+    flex: 1;
+    padding: 15px;
+    overflow: auto;
+}
+
+.widget-content {
+    height: 100%;
+}
+
+/* Minimized state */
+.widget-minimized .widget-body {
+    display: none;
+}
+
+.widget-minimized .grid-stack-item-content {
+    height: auto !important;
+}
+
+/* Maximized state */
+.widget-maximized {
+    position: fixed !important;
+    top: 60px !important;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 10px !important;
+    z-index: 1000 !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.grid-stack-item.ui-draggable-dragging {
+    z-index: 100;
+}
+</style>
+
+<script>
+// Trial data from Flask
+const trials = {{ trials | tojson }};
+
+// Initialize GridStack
+let grid;
+
+document.addEventListener('DOMContentLoaded', function() {
+    grid = GridStack.init({
+        cellHeight: 70,
+        acceptWidgets: true,
+        removable: true,
+        float: true,
+        animate: true,
+        resizable: {
+            handles: 'se, sw'
+        }
+    });
+    
+    // Load saved layout or create default
+    const savedLayout = localStorage.getItem('gridstack-layout');
+    if (savedLayout) {
+        loadLayout();
+    } else {
+        createDefaultLayout();
+    }
+});
+
+function createDefaultLayout() {
+    // Add overview widget
+    addWidget('overview', 'Data Overview', 4, 3, 0, 0);
+    
+    // Add recent trials widget
+    addWidget('recent-trials', 'Recent Trials', 4, 4, 4, 0);
+    
+    // Add chart widget if we have trials
+    if (trials.length > 0) {
+        addWidget('dk-chart', 'Dk vs Frequency', 4, 4, 8, 0);
+    }
+}
+
+function addWidget(type, title, w = 4, h = 4, x = null, y = null) {
+    const template = document.getElementById('widget-template');
+    const widget = template.content.cloneNode(true);
+    
+    // Set title
+    widget.querySelector('.widget-title').textContent = title;
+    
+    // Add to grid
+    const item = grid.addWidget(widget.firstElementChild, {w, h, x, y});
+    
+    // Set widget type as data attribute
+    item.setAttribute('data-widget-type', type);
+    
+    // Render widget content
+    renderWidgetContent(item, type);
+    
+    return item;
+}
+
+function renderWidgetContent(widget, type) {
+    const content = widget.querySelector('.widget-content');
+    
+    switch(type) {
+        case 'overview':
+            renderOverviewWidget(content);
+            break;
+        case 'recent-trials':
+            renderRecentTrialsWidget(content);
+            break;
+        case 'dk-chart':
+            renderDkChartWidget(content);
+            break;
+        case 'df-chart':
+            renderDfChartWidget(content);
+            break;
+        case 'statistics':
+            renderStatisticsWidget(content);
+            break;
+        default:
+            content.innerHTML = '<p>Unknown widget type</p>';
+    }
+}
+
+function renderOverviewWidget(container) {
+    const totalTrials = trials.length;
+    const totalDataPoints = trials.reduce((sum, trial) => sum + (trial.data_count || 0), 0);
+    
+    container.innerHTML = `
+        <div class="text-center">
+            <div class="row">
+                <div class="col-6">
+                    <h4 class="text-primary">${totalTrials}</h4>
+                    <p class="text-muted mb-0">Total Trials</p>
+                </div>
+                <div class="col-6">
+                    <h4 class="text-success">${totalDataPoints}</h4>
+                    <p class="text-muted mb-0">Data Points</p>
+                </div>
+            </div>
+            <hr>
+            <p class="text-sm text-muted mb-0">Welcome, {{ current_user.username }}</p>
+        </div>
+    `;
+}
+
+function renderRecentTrialsWidget(container) {
+    if (trials.length === 0) {
+        container.innerHTML = '<p class="text-muted">No trials uploaded yet.</p>';
+        return;
+    }
+    
+    const recentTrials = trials.slice(0, 5);
+    let html = '<div class="list-group list-group-flush">';
+    
+    recentTrials.forEach(trial => {
+        html += `
+            <a href="/trial/${trial.id}" class="list-group-item list-group-item-action">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-0">${trial.filename}</h6>
+                        <small class="text-muted">${new Date(trial.upload_timestamp).toLocaleDateString()}</small>
+                    </div>
+                    <span class="badge bg-primary rounded-pill">${trial.data_count || 0}</span>
+                </div>
+            </a>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderDkChartWidget(container) {
+    if (trials.length === 0) {
+        container.innerHTML = '<p class="text-muted">No data to display.</p>';
+        return;
+    }
+    
+    // Create a div for the plot
+    const plotDiv = document.createElement('div');
+    plotDiv.style.width = '100%';
+    plotDiv.style.height = '100%';
+    container.appendChild(plotDiv);
+    
+    // Sample data - in real app, fetch from API
+    const trace = {
+        x: [1, 2, 3, 4, 5],
+        y: [2.8, 2.85, 2.9, 2.88, 2.87],
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Dk',
+        line: {color: '#2563eb'}
+    };
+    
+    const layout = {
+        title: false,
+        xaxis: {title: 'Frequency (GHz)'},
+        yaxis: {title: 'Dk'},
+        margin: {l: 50, r: 20, t: 20, b: 40},
+        responsive: true
+    };
+    
+    Plotly.newPlot(plotDiv, [trace], layout, {responsive: true});
+}
+
+function renderDfChartWidget(container) {
+    if (trials.length === 0) {
+        container.innerHTML = '<p class="text-muted">No data to display.</p>';
+        return;
+    }
+    
+    const plotDiv = document.createElement('div');
+    plotDiv.style.width = '100%';
+    plotDiv.style.height = '100%';
+    container.appendChild(plotDiv);
+    
+    // Sample data
+    const trace = {
+        x: [1, 2, 3, 4, 5],
+        y: [0.001, 0.0012, 0.0011, 0.0013, 0.0012],
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Df',
+        line: {color: '#10b981'}
+    };
+    
+    const layout = {
+        title: false,
+        xaxis: {title: 'Frequency (GHz)'},
+        yaxis: {title: 'Df'},
+        margin: {l: 50, r: 20, t: 20, b: 40}
+    };
+    
+    Plotly.newPlot(plotDiv, [trace], layout, {responsive: true});
+}
+
+function renderStatisticsWidget(container) {
+    container.innerHTML = `
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Average Dk</span>
+                <span class="stat-value">2.86</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Average Df</span>
+                <span class="stat-value">0.0012</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Frequency Range</span>
+                <span class="stat-value">1-5 GHz</span>
+            </div>
+        </div>
+    `;
+}
+
+function addNewWidget() {
+    const types = [
+        {value: 'dk-chart', label: 'Dk Chart'},
+        {value: 'df-chart', label: 'Df Chart'}, 
+        {value: 'statistics', label: 'Statistics'},
+        {value: 'recent-trials', label: 'Recent Trials'}
+    ];
+    
+    let options = types.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+    
+    const type = prompt('Select widget type:\n' + types.map(t => `${t.value}: ${t.label}`).join('\n'));
+    if (type) {
+        const title = prompt('Enter widget title:') || 'New Widget';
+        addWidget(type, title);
+    }
+}
+
+function removeWidget(btn) {
+    const widget = btn.closest('.grid-stack-item');
+    grid.removeWidget(widget);
+}
+
+function minimizeWidget(btn) {
+    const widget = btn.closest('.grid-stack-item');
+    widget.classList.toggle('widget-minimized');
+    
+    if (widget.classList.contains('widget-minimized')) {
+        btn.innerHTML = '<i class="bi bi-plus"></i>';
+    } else {
+        btn.innerHTML = '<i class="bi bi-dash"></i>';
+    }
+    
+    grid.update(widget);
+}
+
+function maximizeWidget(btn) {
+    const widget = btn.closest('.grid-stack-item');
+    widget.classList.toggle('widget-maximized');
+    
+    if (widget.classList.contains('widget-maximized')) {
+        btn.innerHTML = '<i class="bi bi-arrows-angle-contract"></i>';
+    } else {
+        btn.innerHTML = '<i class="bi bi-square"></i>';
+    }
+}
+
+function saveLayout() {
+    const items = [];
+    grid.engine.nodes.forEach(node => {
+        items.push({
+            x: node.x,
+            y: node.y,
+            w: node.w,
+            h: node.h,
+            type: node.el.getAttribute('data-widget-type'),
+            title: node.el.querySelector('.widget-title').textContent
+        });
+    });
+    
+    localStorage.setItem('gridstack-layout', JSON.stringify(items));
+    alert('Layout saved!');
+}
+
+function loadLayout() {
+    const savedLayout = localStorage.getItem('gridstack-layout');
+    if (!savedLayout) return;
+    
+    // Clear existing widgets
+    grid.removeAll();
+    
+    // Load saved widgets
+    const items = JSON.parse(savedLayout);
+    items.forEach(item => {
+        addWidget(item.type, item.title, item.w, item.h, item.x, item.y);
+    });
+}
+</script>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 15px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 20px;
+    font-weight: 600;
+    color: #212529;
+}
+</style>
+{% endblock %}

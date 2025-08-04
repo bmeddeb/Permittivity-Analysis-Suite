@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 mb-4">Dashboard Options</h1>
+        <p class="lead text-gray-600">Choose your preferred dashboard layout to visualize and analyze your dielectric data</p>
+    </div>
+    
+    <div class="row g-4">
+        <!-- GridStack.js Option -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-lg border-0 hover-shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="rounded-circle bg-blue-100 p-4 d-inline-block mb-3">
+                            <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 48px; height: 48px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title h4 mb-3">GridStack Dashboard</h3>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-4">Modern grid-based layout with draggable and resizable widgets. Perfect for creating customizable dashboards with a clean, card-based interface.</p>
+                    
+                    <div class="mb-4">
+                        <h6 class="font-semibold text-gray-700 mb-2">Key Features:</h6>
+                        <ul class="list-unstyled text-sm text-gray-600">
+                            <li class="mb-1">✓ Drag and drop widgets</li>
+                            <li class="mb-1">✓ Resize to any size</li>
+                            <li class="mb-1">✓ Mobile responsive</li>
+                            <li class="mb-1">✓ Save layout preferences</li>
+                            <li class="mb-1">✓ Clean, modern design</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="{{ url_for('main.dashboard_gridstack') }}" class="btn btn-primary btn-lg px-5">
+                            Launch GridStack Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Golden Layout Option -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-lg border-0 hover-shadow">
+                <div class="card-body p-5">
+                    <div class="text-center mb-4">
+                        <div class="rounded-circle bg-amber-100 p-4 d-inline-block mb-3" style="background-color: #fef3c7;">
+                            <svg class="w-12 h-12 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width: 48px; height: 48px; color: #d97706;">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/>
+                            </svg>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Golden Layout Dashboard</h3>
+                    </div>
+                    
+                    <p class="text-gray-600 mb-4">Professional desktop-like interface with docking, tabs, and window management. Ideal for complex data analysis workflows with multiple views.</p>
+                    
+                    <div class="mb-4">
+                        <h6 class="font-semibold text-gray-700 mb-2">Key Features:</h6>
+                        <ul class="list-unstyled text-sm text-gray-600">
+                            <li class="mb-1">✓ Tabbed interface</li>
+                            <li class="mb-1">✓ Docking and splitting</li>
+                            <li class="mb-1">✓ Pop-out windows</li>
+                            <li class="mb-1">✓ Desktop application feel</li>
+                            <li class="mb-1">✓ Advanced window management</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="{{ url_for('main.dashboard_golden_layout') }}" class="btn btn-warning btn-lg px-5">
+                            Launch Golden Layout Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="text-center mt-5">
+        <p class="text-gray-500">
+            <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Both dashboards support real-time data visualization with Plotly.js
+        </p>
+    </div>
+</div>
+
+<style>
+.hover-shadow {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.hover-shadow:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+}
+
+.bg-blue-100 {
+    background-color: #dbeafe;
+}
+
+.text-blue-600 {
+    color: #2563eb;
+}
+
+.bg-amber-100 {
+    background-color: #fef3c7;
+}
+
+.text-amber-600 {
+    color: #d97706;
+}
+
+.text-gray-500 {
+    color: #6b7280;
+}
+
+.text-gray-600 {
+    color: #4b5563;
+}
+
+.text-gray-700 {
+    color: #374151;
+}
+</style>
+{% endblock %}

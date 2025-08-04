@@ -1,0 +1,699 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- jQuery (required for Golden Layout) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Golden Layout CSS -->
+<link type="text/css" rel="stylesheet" href="https://golden-layout.com/files/latest/css/goldenlayout-base.css" />
+<link type="text/css" rel="stylesheet" href="https://golden-layout.com/files/latest/css/goldenlayout-light-theme.css" />
+
+<div style="position: relative; height: calc(100vh - 100px);">
+    <div class="d-flex justify-content-between align-items-center mb-2 px-3">
+        <h1 class="h3">Golden Layout Dashboard</h1>
+        <div>
+            <button class="btn btn-sm btn-primary" onclick="saveLayout()">
+                <i class="bi bi-save"></i> Save Layout
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="resetLayout()">
+                <i class="bi bi-arrow-clockwise"></i> Reset Layout
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+    
+    <!-- Golden Layout Container -->
+    <div id="layoutContainer" style="position: absolute; top: 50px; left: 10px; right: 10px; bottom: 10px;"></div>
+</div>
+
+<!-- Plotly JS -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<!-- Golden Layout JS -->
+<script type="text/javascript" src="https://golden-layout.com/files/latest/js/goldenlayout.js"></script>
+
+<style>
+/* Modern Professional Dashboard Theme */
+.lm_goldenlayout {
+    background: #fafbfc;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.lm_content {
+    background: #ffffff;
+    border: 1px solid #e1e8ed;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.lm_header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 48px;
+    border-radius: 8px 8px 0 0;
+    border: none;
+    position: relative;
+    overflow: hidden;
+}
+
+.lm_header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.lm_tab {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.15);
+    color: #ffffff;
+    padding: 0 16px;
+    margin: 8px 2px 0 2px;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    line-height: 32px;
+    height: 32px;
+    position: relative;
+    z-index: 10;
+    backdrop-filter: blur(10px);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lm_tab.lm_active {
+    background: rgba(255, 255, 255, 0.95);
+    color: #4a5568;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+    text-shadow: none;
+    height: 36px;
+    line-height: 36px;
+}
+
+.lm_tab:hover:not(.lm_active) {
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateY(-1px);
+}
+
+/* Widget content styles */
+.dashboard-widget {
+    padding: 24px;
+    height: 100%;
+    overflow: auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #ffffff;
+}
+
+.widget-plot {
+    width: 100%;
+    height: calc(100% - 50px);
+    border-radius: 0.375rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02), 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15), 0 4px 10px rgba(0, 0, 0, 0.08);
+    border-color: #cbd5e0;
+}
+
+.stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    font-feature-settings: 'tnum';
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 700;
+}
+
+.trial-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+}
+
+.trial-item {
+    padding: 18px;
+    border-bottom: 1px solid #f1f5f9;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #ffffff;
+    position: relative;
+}
+
+.trial-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.trial-item:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.08);
+}
+
+.trial-item:hover::before {
+    width: 4px;
+}
+
+.trial-item:last-child {
+    border-bottom: none;
+}
+
+.trial-item:active {
+    transform: translateX(2px);
+}
+
+.widget-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 24px;
+    color: #1e293b;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    position: relative;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.widget-title::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    border-radius: 2px;
+}
+
+/* Control buttons styling */
+.lm_controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 12px;
+    position: relative;
+    z-index: 20;
+}
+
+.lm_controls > li {
+    width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 3px;
+}
+
+.lm_controls > li:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.lm_maximise {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="white" stroke-width="2" fill="none"/></svg>');
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.lm_close {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" stroke="white" stroke-width="2"/><line x1="6" y1="6" x2="18" y2="18" stroke="white" stroke-width="2"/></svg>');
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.lm_popout {
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="white" viewBox="0 0 24 24"><path d="M21 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h6" stroke="white" stroke-width="2" fill="none"/><path d="m21 3-8 8" stroke="white" stroke-width="2" fill="none"/><path d="M15 3h6v6" stroke="white" stroke-width="2" fill="none"/></svg>');
+    background-size: 12px 12px;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* Drag proxy styling */
+.lm_dragProxy .lm_header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25), 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.lm_dragProxy .lm_content {
+    background: rgba(102, 126, 234, 0.05);
+    border: 2px dashed #667eea;
+    border-radius: 8px;
+}
+
+/* Splitter styling */
+.lm_splitter {
+    background: #e2e8f0;
+    opacity: 1;
+    transition: all 0.3s ease;
+}
+
+.lm_splitter:hover,
+.lm_splitter.lm_dragging {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* No content message */
+.lm_goldenlayout.lm_empty_tab_content {
+    background: linear-gradient(135deg, #fafbfc 0%, #f1f5f9 100%);
+    color: #64748b;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+</style>
+
+<script>
+// Trial data from Flask
+const trials = {{ trials | tojson }};
+
+var myLayout;
+
+// Component HTML generators
+const componentGenerators = {
+    overview: function() {
+        const totalTrials = trials.length;
+        const totalDataPoints = trials.reduce((sum, trial) => sum + trial.data_count, 0);
+        
+        return `
+            <div class="dashboard-widget">
+                <h3 class="widget-title">System Overview</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${totalTrials}</div>
+                        <div class="stat-label">Total Trials</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${totalDataPoints}</div>
+                        <div class="stat-label">Data Points</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">{{ current_user.username }}</div>
+                        <div class="stat-label">Current User</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+    
+    trialList: function() {
+        let html = '<div class="dashboard-widget"><h3 class="widget-title">Recent Trials</h3>';
+        
+        if (trials.length === 0) {
+            html += '<p class="text-muted">No trials uploaded yet.</p>';
+        } else {
+            html += '<ul class="trial-list">';
+            trials.slice(0, 10).forEach(trial => {
+                const date = new Date(trial.upload_timestamp).toLocaleDateString();
+                html += `
+                    <li class="trial-item" onclick="window.location.href='/trial/${trial.id}'">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${trial.filename}</strong><br>
+                                <small class="text-muted">${date}</small>
+                            </div>
+                            <span class="badge bg-primary">${trial.data_count}</span>
+                        </div>
+                    </li>
+                `;
+            });
+            html += '</ul>';
+        }
+        
+        html += '</div>';
+        return html;
+    },
+    
+    dkChart: function(container) {
+        const plotId = 'dk-plot-' + Math.random().toString(36).substr(2, 9);
+        const html = `
+            <div class="dashboard-widget">
+                <h3 class="widget-title">Dielectric Constant (Dk) vs Frequency</h3>
+                <div class="widget-plot" id="${plotId}"></div>
+            </div>
+        `;
+        
+        // Schedule Plotly rendering after DOM update
+        setTimeout(() => {
+            const plotDiv = document.getElementById(plotId);
+            if (plotDiv) {
+                const freq = Array.from({length: 20}, (_, i) => i * 0.5 + 1);
+                const dk = freq.map(f => 2.85 + 0.05 * Math.sin(f) + (Math.random() - 0.5) * 0.02);
+                
+                const trace = {
+                    x: freq,
+                    y: dk,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Dk',
+                    line: {color: '#667eea', width: 3},
+                    marker: {size: 8, color: '#764ba2'}
+                };
+                
+                const layout = {
+                    xaxis: {
+                        title: 'Frequency (GHz)', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    yaxis: {
+                        title: 'Dk', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    margin: {l: 60, r: 30, t: 30, b: 60},
+                    plot_bgcolor: '#fafbfc',
+                    paper_bgcolor: '#ffffff',
+                    font: {family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#64748b'}
+                };
+                
+                Plotly.newPlot(plotId, [trace], layout, {responsive: true});
+            }
+        }, 100);
+        
+        return html;
+    },
+    
+    dfChart: function(container) {
+        const plotId = 'df-plot-' + Math.random().toString(36).substr(2, 9);
+        const html = `
+            <div class="dashboard-widget">
+                <h3 class="widget-title">Dissipation Factor (Df) vs Frequency</h3>
+                <div class="widget-plot" id="${plotId}"></div>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const plotDiv = document.getElementById(plotId);
+            if (plotDiv) {
+                const freq = Array.from({length: 20}, (_, i) => i * 0.5 + 1);
+                const df = freq.map(f => 0.001 + 0.0002 * Math.sin(f * 0.5) + (Math.random() - 0.5) * 0.0001);
+                
+                const trace = {
+                    x: freq,
+                    y: df,
+                    type: 'scatter',
+                    mode: 'lines+markers',
+                    name: 'Df',
+                    line: {color: '#10b981', width: 3},
+                    marker: {size: 8, color: '#059669'}
+                };
+                
+                const layout = {
+                    xaxis: {
+                        title: 'Frequency (GHz)', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    yaxis: {
+                        title: 'Df', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    margin: {l: 70, r: 30, t: 30, b: 60},
+                    plot_bgcolor: '#fafbfc',
+                    paper_bgcolor: '#ffffff',
+                    font: {family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#64748b'}
+                };
+                
+                Plotly.newPlot(plotId, [trace], layout, {responsive: true});
+            }
+        }, 100);
+        
+        return html;
+    },
+    
+    modelComparison: function(container) {
+        const plotId = 'model-plot-' + Math.random().toString(36).substr(2, 9);
+        const html = `
+            <div class="dashboard-widget">
+                <h3 class="widget-title">Model Comparison</h3>
+                <div class="widget-plot" id="${plotId}"></div>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const plotDiv = document.getElementById(plotId);
+            if (plotDiv) {
+                const freq = Array.from({length: 20}, (_, i) => i * 0.5 + 1);
+                
+                const traces = [
+                    {
+                        x: freq,
+                        y: freq.map(f => 2.85 + 0.05 * Math.sin(f) + (Math.random() - 0.5) * 0.02),
+                        name: 'Measured',
+                        mode: 'markers',
+                        type: 'scatter',
+                        marker: {size: 10, color: '#1e293b', opacity: 0.8}
+                    },
+                    {
+                        x: freq,
+                        y: freq.map(f => 2.84 + 0.048 * Math.sin(f + 0.1)),
+                        name: 'Debye Model',
+                        mode: 'lines',
+                        type: 'scatter',
+                        line: {color: '#667eea', width: 3}
+                    },
+                    {
+                        x: freq,
+                        y: freq.map(f => 2.86 + 0.052 * Math.sin(f - 0.1)),
+                        name: 'Cole-Cole Model',
+                        mode: 'lines',
+                        type: 'scatter',
+                        line: {color: '#764ba2', width: 3, dash: 'dash'}
+                    }
+                ];
+                
+                const layout = {
+                    xaxis: {
+                        title: 'Frequency (GHz)', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    yaxis: {
+                        title: 'Dk', 
+                        gridcolor: '#f1f5f9',
+                        titlefont: {color: '#475569', size: 14}
+                    },
+                    margin: {l: 60, r: 30, t: 30, b: 60},
+                    plot_bgcolor: '#fafbfc',
+                    paper_bgcolor: '#ffffff',
+                    showlegend: true,
+                    legend: {
+                        x: 0.02, 
+                        y: 0.98,
+                        bgcolor: 'rgba(255, 255, 255, 0.8)',
+                        bordercolor: '#e2e8f0',
+                        borderwidth: 1
+                    },
+                    font: {family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', color: '#64748b'}
+                };
+                
+                Plotly.newPlot(plotId, traces, layout, {responsive: true});
+            }
+        }, 100);
+        
+        return html;
+    }
+};
+
+// Configuration
+var config = {
+    content: [{
+        type: 'row',
+        content: [
+            {
+                type: 'column',
+                width: 30,
+                content: [
+                    {
+                        type: 'component',
+                        componentName: 'overview',
+                        title: 'Overview'
+                    },
+                    {
+                        type: 'component',
+                        componentName: 'trialList',
+                        title: 'Recent Trials'
+                    }
+                ]
+            },
+            {
+                type: 'column',
+                width: 70,
+                content: [
+                    {
+                        type: 'stack',
+                        content: [
+                            {
+                                type: 'component',
+                                componentName: 'dkChart',
+                                title: 'Dk Analysis'
+                            },
+                            {
+                                type: 'component',
+                                componentName: 'dfChart',
+                                title: 'Df Analysis'
+                            }
+                        ]
+                    },
+                    {
+                        type: 'component',
+                        componentName: 'modelComparison',
+                        title: 'Model Comparison',
+                        height: 40
+                    }
+                ]
+            }
+        ]
+    }]
+};
+
+// Initialize on document ready
+$(document).ready(function() {
+    // Create the layout
+    myLayout = new GoldenLayout(config, '#layoutContainer');
+    
+    // Register components
+    myLayout.registerComponent('overview', function(container, state) {
+        container.getElement().html(componentGenerators.overview());
+    });
+    
+    myLayout.registerComponent('trialList', function(container, state) {
+        container.getElement().html(componentGenerators.trialList());
+    });
+    
+    myLayout.registerComponent('dkChart', function(container, state) {
+        const html = componentGenerators.dkChart(container);
+        container.getElement().html(html);
+        
+        // Handle resize
+        container.on('resize', function() {
+            const plotDiv = container.getElement().find('.widget-plot')[0];
+            if (plotDiv && plotDiv.data) {
+                Plotly.Plots.resize(plotDiv);
+            }
+        });
+    });
+    
+    myLayout.registerComponent('dfChart', function(container, state) {
+        const html = componentGenerators.dfChart(container);
+        container.getElement().html(html);
+        
+        container.on('resize', function() {
+            const plotDiv = container.getElement().find('.widget-plot')[0];
+            if (plotDiv && plotDiv.data) {
+                Plotly.Plots.resize(plotDiv);
+            }
+        });
+    });
+    
+    myLayout.registerComponent('modelComparison', function(container, state) {
+        const html = componentGenerators.modelComparison(container);
+        container.getElement().html(html);
+        
+        container.on('resize', function() {
+            const plotDiv = container.getElement().find('.widget-plot')[0];
+            if (plotDiv && plotDiv.data) {
+                Plotly.Plots.resize(plotDiv);
+            }
+        });
+    });
+    
+    // Initialize the layout
+    myLayout.init();
+    
+    // Handle window resize
+    $(window).resize(function() {
+        myLayout.updateSize();
+    });
+});
+
+// Save layout to localStorage
+function saveLayout() {
+    var state = JSON.stringify(myLayout.toConfig());
+    localStorage.setItem('dashboardLayout', state);
+    alert('Layout saved successfully!');
+}
+
+// Reset layout
+function resetLayout() {
+    if (confirm('Reset layout to default? Your current layout will be lost.')) {
+        localStorage.removeItem('dashboardLayout');
+        location.reload();
+    }
+}
+
+// Load saved layout on startup
+$(document).ready(function() {
+    var savedState = localStorage.getItem('dashboardLayout');
+    if (savedState !== null) {
+        try {
+            config = JSON.parse(savedState);
+        } catch(e) {
+            console.error('Failed to load saved layout:', e);
+        }
+    }
+});
+</script>
+{% endblock %}
